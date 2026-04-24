@@ -67,6 +67,20 @@ function computeHeadline(s: GameState): Headline {
   if (lead) {
     const def = THREATS[lead.kind];
     const youHave = def.counters.find((c) => s.takenChoices.includes(c));
+    // If EVERY active non-legit threat is countered by something the player
+    // already owns, drop tier to stable (green) with HOLDING label so the
+    // player knows their stack is doing the work.
+    const allCovered = nonLegit.every((t) =>
+      THREATS[t.kind].counters.some((c) => s.takenChoices.includes(c)),
+    );
+    if (allCovered) {
+      return {
+        tier: 'stable',
+        label: 'HOLDING',
+        message: `${def.name} · countered by ${labelFor(youHave!)}`,
+        pointer: 'threats',
+      };
+    }
     const action = youHave
       ? `holding with ${labelFor(youHave)}`
       : `counter: ${def.counters.slice(0, 2).map(labelFor).join(' / ')}`;

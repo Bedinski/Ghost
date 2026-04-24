@@ -4,7 +4,10 @@ import { clamp } from './state';
 import { THREATS, threatsForDay } from './events';
 
 export const TICKS_PER_DAY = 60;
-export const TICK_MS = 110;
+// Default 1× tick rate. Real-time per day = 60 × 220ms ≈ 13.2s. Speed
+// control divides this (2× → 110ms, 4× → 55ms). Threat TTLs are in ticks
+// so balance is unchanged; only real-world pacing slows.
+export const TICK_MS = 220;
 
 function aggregateMods(mods: Modifier[]): Required<Omit<Modifier, 'id' | 'source' | 'remaining'>> {
   const base = {
@@ -245,13 +248,18 @@ export function tick(prev: GameState): GameState {
   // per-tick security drift
   if (state.techDebt > 40) state.securityPosture = clamp(state.securityPosture - 0.02, 0, 100);
 
-  // packet spawn based on rates
-  if (state.tick % 2 === 0) {
-    const legitPackets = Math.min(6, Math.floor(effectiveLegit / 18));
+  // Packet spawn based on rates. When the network is idle (low traffic, no
+  // threats), spawn far less so the map *breathes* and dramatic moments
+  // visibly punctuate the calm.
+  const baselineThisDay = 35 + state.day * 5;
+  const idle = state.threats.length === 0 && inbound < baselineThisDay * 1.1;
+  const spawnEvery = idle ? 4 : 2;
+  if (state.tick % spawnEvery === 0) {
+    const legitPackets = Math.min(idle ? 3 : 6, Math.floor(effectiveLegit / (idle ? 26 : 18)));
     for (let i = 0; i < legitPackets; i++) spawnPacket(state, 'legit', 0.012 + rng() * 0.004);
     const attackPackets = Math.min(6, Math.floor(effectiveAttack / 10));
     for (let i = 0; i < attackPackets; i++) spawnPacket(state, 'attack', 0.018 + rng() * 0.006);
-    const outPackets = Math.min(4, Math.floor(outbound / 14));
+    const outPackets = Math.min(idle ? 2 : 4, Math.floor(outbound / (idle ? 22 : 14)));
     for (let i = 0; i < outPackets; i++) spawnPacket(state, 'out', 0.011 + rng() * 0.003);
     if (exfilBoost > 2 && rng() < 0.5) spawnPacket(state, 'exfil', 0.01);
   }

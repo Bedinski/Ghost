@@ -2,6 +2,11 @@ import type { Choice } from '../types';
 
 // Every choice has at least one clear downside. Prereqs gate the "advanced"
 // tier so early runs feel constrained and late runs feel powerful.
+//
+// executeHint drives the EXECUTE phase animation: which panel to highlight,
+// which icon to pulse, and the persistent badge text that sticks on the
+// panel header for the rest of the run as a visible reminder of what's
+// actively defending the company.
 export const CHOICES: Choice[] = [
   {
     id: 'breather',
@@ -13,6 +18,7 @@ export const CHOICES: Choice[] = [
     immediate: { reputation: 1, securityPosture: 2, techDebt: -3 },
     upside: ['$0 cost', '-3 tech debt', '+2 security · +1 reputation'],
     downside: ['No new capability. If attacks land you have nothing extra to lean on.'],
+    executeHint: { panel: 'all', glyph: 'wrench', badge: 'tickets cleared', tone: 'green' },
   },
   {
     id: 'loadtest-scale',
@@ -25,6 +31,7 @@ export const CHOICES: Choice[] = [
     ongoing: { capacityMul: 1.05, upkeep: 8, duration: 9999 },
     upside: ['+1 app server', '+5% fleet capacity'],
     downside: ['$180 + $8/day upkeep', 'More surface area if unpatched'],
+    executeHint: { panel: 'servers', glyph: 'server', badge: '+1 app', tone: 'cyan' },
   },
   {
     id: 'inbound-monitoring',
@@ -37,6 +44,7 @@ export const CHOICES: Choice[] = [
     ongoing: { monitoringBonus: 0.25, logSpeed: 1.2, duration: 9999 },
     upside: ['Threats surface 25% faster', 'Log stream sharpens'],
     downside: ['$120 upfront', 'Adds noise to the log until tuned'],
+    executeHint: { panel: 'network', target: 'edge', glyph: 'radar', badge: 'monitoring', tone: 'cyan' },
   },
   {
     id: 'harden-firewall',
@@ -49,6 +57,7 @@ export const CHOICES: Choice[] = [
     ongoing: { firewallBlockPct: 0.35, falsePositivePct: 0.08, duration: 9999 },
     upside: ['Drops 35% of attack traffic at the edge'],
     downside: ['Blocks 8% of legit users', 'Worse during viral surges'],
+    executeHint: { panel: 'network', target: 'edge', glyph: 'shield', badge: 'firewall', tone: 'cyan' },
   },
   {
     id: 'deploy-waf',
@@ -62,6 +71,7 @@ export const CHOICES: Choice[] = [
     ongoing: { wafBlockPct: 0.55, falsePositivePct: 0.04, upkeep: 6, duration: 9999 },
     upside: ['Neutralises most L7 attacks (SQLi, cred-stuff)'],
     downside: ['$200 + $6/day', 'Needs monitoring to tune', 'Small latency hit'],
+    executeHint: { panel: 'network', target: 'app', glyph: 'shield', badge: 'WAF', tone: 'magenta' },
   },
   {
     id: 'rate-limit',
@@ -73,6 +83,7 @@ export const CHOICES: Choice[] = [
     ongoing: { rateLimitPct: 0.25, falsePositivePct: 0.05, duration: 9999 },
     upside: ['Flattens volumetric spikes by 25%'],
     downside: ['Angers power users (reputation drag during surges)'],
+    executeHint: { panel: 'network', target: 'edge', glyph: 'gauge', badge: 'rate-limit', tone: 'amber' },
   },
   {
     id: 'patch',
@@ -84,6 +95,7 @@ export const CHOICES: Choice[] = [
     immediate: { patchAll: true, securityPosture: 10, reputation: -2 },
     upside: ['Closes zero-day exposure', 'All servers marked patched'],
     downside: ['Brief rolling-restart: -2 reputation tick'],
+    executeHint: { panel: 'servers', glyph: 'chip', badge: 'patched', tone: 'green' },
   },
   {
     id: 'hire-sre',
@@ -96,6 +108,7 @@ export const CHOICES: Choice[] = [
     ongoing: { incidentSpeed: 1.4, upkeep: 14, duration: 9999 },
     upside: ['Threats resolve 40% faster', 'Team morale +'],
     downside: ['$260 sign-on + $14/day salary'],
+    executeHint: { panel: 'log', glyph: 'user', badge: '+1 SRE', tone: 'cyan' },
   },
   {
     id: 'tech-debt',
@@ -107,6 +120,7 @@ export const CHOICES: Choice[] = [
     immediate: { techDebt: -25, securityPosture: 4 },
     upside: ['-25 tech debt', 'Future choices cost less'],
     downside: ['$100 spent now for silent returns'],
+    executeHint: { panel: 'topstrip', glyph: 'wrench', badge: 'debt down', tone: 'green' },
   },
   {
     id: 'cache',
@@ -119,6 +133,7 @@ export const CHOICES: Choice[] = [
     ongoing: { cacheHitPct: 0.4, capacityMul: 1.25, upkeep: 5, duration: 9999 },
     upside: ['+25% effective capacity', 'DB tier breathes easier'],
     downside: ['Hides real load from loadtests', 'Stale-data risk on events'],
+    executeHint: { panel: 'servers', glyph: 'cloud', badge: 'cache', tone: 'cyan' },
   },
   {
     id: 'siem',
@@ -132,6 +147,7 @@ export const CHOICES: Choice[] = [
     ongoing: { logSpeed: 1.6, incidentSpeed: 1.15, upkeep: 4, duration: 9999 },
     upside: ['Incidents resolve 15% faster', 'Log velocity way up'],
     downside: ['$150 + $4/day storage', 'Alert fatigue if untuned'],
+    executeHint: { panel: 'log', glyph: 'scroll', badge: 'SIEM live', tone: 'magenta' },
   },
   {
     id: 'incident-drill',
@@ -144,6 +160,7 @@ export const CHOICES: Choice[] = [
     ongoing: { incidentSpeed: 1.15, duration: 9999 },
     upside: ['Team responds 15% faster', 'Morale bump'],
     downside: ['A day of lost feature work'],
+    executeHint: { panel: 'log', glyph: 'flame', badge: 'drilled', tone: 'amber' },
   },
   {
     id: 'pentest',
@@ -156,6 +173,7 @@ export const CHOICES: Choice[] = [
     immediate: { securityPosture: 18, revealHidden: true, techDebt: 8 },
     upside: ['+18 security posture', 'Reveals hidden threats this run'],
     downside: ['$220', '+8 tech debt (a backlog of tickets)'],
+    executeHint: { panel: 'topstrip', glyph: 'bug', badge: 'pentested', tone: 'magenta' },
   },
   {
     id: 'backup',
@@ -168,6 +186,7 @@ export const CHOICES: Choice[] = [
     ongoing: { upkeep: 3, duration: 9999 },
     upside: ['Ransomware loses most of its teeth'],
     downside: ['$110 + $3/day', 'Only matters if you get hit'],
+    executeHint: { panel: 'servers', glyph: 'archive', badge: 'backups', tone: 'cyan' },
   },
   {
     id: 'db-replica',
@@ -181,6 +200,7 @@ export const CHOICES: Choice[] = [
     ongoing: { capacityMul: 1.12, upkeep: 7, duration: 9999 },
     upside: ['Read capacity up, HA on the data tier'],
     downside: ['$200 + $7/day', 'More surface area'],
+    executeHint: { panel: 'servers', glyph: 'database', badge: '+1 replica', tone: 'cyan' },
   },
   {
     id: 'cdn',
@@ -194,6 +214,7 @@ export const CHOICES: Choice[] = [
     ongoing: { inboundMul: 0.8, capacityMul: 1.15, upkeep: 5, duration: 9999 },
     upside: ['Origin sees 20% less traffic'],
     downside: ['$160 + $5/day', 'Cache purge bugs on viral surges'],
+    executeHint: { panel: 'network', target: 'edge', glyph: 'globe', badge: 'CDN', tone: 'cyan' },
   },
   {
     id: 'zero-trust',
@@ -207,6 +228,7 @@ export const CHOICES: Choice[] = [
     ongoing: { falsePositivePct: -0.03, upkeep: 10, duration: 9999 },
     upside: ['Huge security posture boost', 'Insider threats neutralised'],
     downside: ['$320 + $10/day', 'Week of migration pain'],
+    executeHint: { panel: 'network', glyph: 'lock', badge: 'zero-trust', tone: 'magenta' },
   },
 ];
 

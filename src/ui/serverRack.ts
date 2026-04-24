@@ -1,4 +1,5 @@
-import type { GameState, Server } from '../types';
+import type { ExecuteHint, GameState, Server } from '../types';
+import { CHOICES_BY_ID } from '../game/choices';
 import { icon } from './icons';
 
 const ROLE_LABEL: Record<Server['role'], string> = {
@@ -17,18 +18,29 @@ const ROLE_ICON: Record<Server['role'], string> = {
   cache: 'cloud',
 };
 
-export function mountServerRack(host: HTMLElement): (s: GameState) => void {
+export interface ServerRackHandle {
+  render(s: GameState): void;
+  pulse(hint: ExecuteHint): void;
+  hostEl(): HTMLElement;
+}
+
+export function mountServerRack(host: HTMLElement): ServerRackHandle {
   host.innerHTML = `
     <header class="panel-head">
       <h3>server rack</h3>
+      <div class="panel-badges" data-region="badges"></div>
       <span class="panel-sub">fleet health</span>
     </header>
     <div class="rack-list" role="list"></div>
+    <div class="panel-pulse" data-region="pulse"></div>
   `;
   const list = host.querySelector<HTMLElement>('.rack-list')!;
+  const badges = host.querySelector<HTMLElement>('[data-region="badges"]')!;
+  const pulseHost = host.querySelector<HTMLElement>('[data-region="pulse"]')!;
   const cardMap = new Map<string, HTMLElement>();
+  const renderedBadges = new Set<string>();
 
-  return (s: GameState) => {
+  function render(s: GameState) {
     const ids = new Set(s.servers.map((sv) => sv.id));
     for (const [id, el] of cardMap) {
       if (!ids.has(id)) {
@@ -46,7 +58,27 @@ export function mountServerRack(host: HTMLElement): (s: GameState) => void {
       }
       updateCard(el, sv);
     }
-  };
+    // Persistent modifier badges from choices the player has shipped that
+    // anchor to this panel.
+    syncBadges(badges, s, renderedBadges, ['servers']);
+  }
+
+  function pulse(hint: ExecuteHint) {
+    const tone = hint.tone ?? 'cyan';
+    pulseHost.innerHTML = `
+      <div class="pp-burst pp-burst--${tone}">${icon(hint.glyph, 'pp-glyph')}</div>
+      <div class="pp-badge pp-badge--${tone}">${hint.badge}</div>
+    `;
+    pulseHost.classList.remove('is-pulsing');
+    void pulseHost.offsetWidth;
+    pulseHost.classList.add('is-pulsing');
+    setTimeout(() => {
+      pulseHost.classList.remove('is-pulsing');
+      pulseHost.innerHTML = '';
+    }, 1400);
+  }
+
+  return { render, pulse, hostEl: () => host };
 }
 
 function makeCard(sv: Server): HTMLElement {
@@ -90,4 +122,40 @@ function updateCard(el: HTMLElement, sv: Server) {
   const patch = el.querySelector<HTMLElement>('.rc-patch')!;
   patch.classList.toggle('is-unpatched', !sv.patched);
   patch.title = sv.patched ? 'patched' : 'UNPATCHED — zero-day exposure';
+}
+
+// Re-renders the small chip strip in the panel header to reflect every
+// shipped choice whose executeHint anchors to this panel. The panels
+// passed in say which `executeHint.panel` values count for this strip.
+export function syncBadges(
+  badgeHost: HTMLElement,
+  s: GameState,
+  rendered: Set<string>,
+  panels: string[],
+): void {
+  // Build the desired badge set from takenChoices.
+  const desired = new Map<string, { text: string; tone: string }>();
+  for (const id of s.takenChoices) {
+    const c = CHOICES_BY_ID.get(id);
+    if (!c?.executeHint) continue;
+    if (!panels.includes(c.executeHint.panel) && c.executeHint.panel !== 'all') continue;
+    desired.set(id, { text: c.executeHint.badge, tone: c.executeHint.tone ?? 'cyan' });
+  }
+  // Diff against rendered set; rebuild for simplicity (small lists).
+  if (
+    desired.size === rendered.size &&
+    [...desired.keys()].every((k) => rendered.has(k))
+  ) {
+    return;
+  }
+  rendered.clear();
+  badgeHost.innerHTML = '';
+  for (const [id, b] of desired) {
+    const chip = document.createElement('span');
+    chip.className = `panel-badge panel-badge--${b.tone}`;
+    chip.textContent = b.text;
+    chip.title = id;
+    badgeHost.appendChild(chip);
+    rendered.add(id);
+  }
 }

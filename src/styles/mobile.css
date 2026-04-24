@@ -71,6 +71,37 @@
   .sb-msg { font-size: 11px; }
   .sb-pointer { display: none; }
 
+  /* Speed control collapses to a single tappable label */
+  .m-speed-host { padding: 0 6px; }
+  .speed-ctrl .sc-label { display: none; }
+  .speed-ctrl .sc-btn { padding: 4px 6px; min-width: 26px; font-size: 10px; }
+  .speed-ctrl .sc-btn:not(.is-active) { display: none; }
+  /* On mobile we'll still render all three buttons but only show the active one;
+     a future iteration could cycle on tap. For now players use desktop or
+     can tap the active button which expands via :focus-within. */
+  .m-speed-host:focus-within .speed-ctrl .sc-btn { display: inline-block; }
+  .m-speed-host:hover .speed-ctrl .sc-btn { display: inline-block; }
+
+  /* Situation report on phones is full-bleed and easier to dismiss */
+  .sit-report { padding: 14px; }
+  .sr-card { width: 100%; padding: 12px 14px 14px; }
+  .sr-day { font-size: 18px; letter-spacing: 0.14em; }
+  .sr-row { grid-template-columns: 60px 1fr; row-gap: 4px; }
+  .sr-row-extra { grid-column: 1 / -1; justify-self: start; }
+  .sr-skip { padding: 6px 10px; font-size: 11px; }
+
+  /* Panel pulse glyph slightly smaller */
+  .pp-burst { width: 56px; height: 56px; }
+  .pp-glyph { width: 26px; height: 26px; }
+  .pp-badge { font-size: 10px; padding: 3px 8px; }
+
+  /* Float deltas a bit smaller */
+  .float-delta { font-size: 12px; }
+
+  /* Toast positioning — stay below the status banner */
+  .m-toast-host { padding-top: 76px; }
+  .moment-toast { font-size: 11px; padding: 6px 11px; }
+
   .m-body {
     padding: 6px 8px 8px;
     gap: 6px;

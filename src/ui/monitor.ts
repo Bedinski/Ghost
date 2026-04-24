@@ -1,11 +1,13 @@
 import type { GameState } from '../types';
-import { mountTopStrip } from './topStrip';
+import { mountTopStripWithAnchors, type TopStripHandle } from './topStrip';
 import { mountStatusBanner } from './statusBanner';
-import { mountServerRack } from './serverRack';
-import { mountNetworkMap } from './networkMap';
+import { mountServerRack, type ServerRackHandle } from './serverRack';
+import { mountNetworkMap, type NetworkMapHandle } from './networkMap';
 import { mountThreatBoard } from './threatBoard';
 import { mountEventLog } from './eventLog';
 import { mountSparkline } from './sparkline';
+import { mountSpeedControl } from './speedControl';
+import { mountMomentToast, type MomentToastHandle } from './momentToast';
 import { mountCarousel, type Carousel } from './carousel';
 import { isCompact, onBreakpointChange } from './mediaQuery';
 
@@ -15,6 +17,11 @@ export interface Monitor {
   choiceOverlayHost(): HTMLElement;
   showThreatsPanel(): void;
   showSummary(el: HTMLElement): void;
+  topStrip(): TopStripHandle;
+  servers(): ServerRackHandle;
+  network(): NetworkMapHandle;
+  floatHost(): HTMLElement;
+  momentToast(): MomentToastHandle;
   dispose(): void;
 }
 
@@ -31,6 +38,8 @@ export function mountMonitor(host: HTMLElement): Monitor {
         </div>
         <div class="m-log" data-region="log"></div>
       </div>
+      <div class="m-float-host"></div>
+      <div class="m-toast-host"></div>
       <div class="m-choice-host"></div>
       <div class="m-summary-host"></div>
     </div>
@@ -41,11 +50,24 @@ export function mountMonitor(host: HTMLElement): Monitor {
   const panelsHost = host.querySelector<HTMLElement>('.m-panels')!;
   const chartHost = host.querySelector<HTMLElement>('.chart-host')!;
   const logHost = host.querySelector<HTMLElement>('[data-region="log"]')!;
+  const floatHost = host.querySelector<HTMLElement>('.m-float-host')!;
+  const toastHost = host.querySelector<HTMLElement>('.m-toast-host')!;
   const choiceHost = host.querySelector<HTMLElement>('.m-choice-host')!;
   const summaryHost = host.querySelector<HTMLElement>('.m-summary-host')!;
 
-  const renderStrip = mountTopStrip(strip);
-  const renderStatus = mountStatusBanner(statusHost);
+  const topStripHandle = mountTopStripWithAnchors(strip);
+
+  // Status banner row also hosts the speed control on the right.
+  statusHost.classList.add('m-status-row');
+  const statusInner = document.createElement('div');
+  statusInner.className = 'm-status-inner';
+  const speedHost = document.createElement('div');
+  speedHost.className = 'm-speed-host';
+  statusHost.appendChild(statusInner);
+  statusHost.appendChild(speedHost);
+  const renderStatus = mountStatusBanner(statusInner);
+  mountSpeedControl(speedHost);
+
   const sparkline = mountSparkline(chartHost);
   const renderLog = mountEventLog(logHost);
 
@@ -57,9 +79,11 @@ export function mountMonitor(host: HTMLElement): Monitor {
   const threatPanel = document.createElement('section');
   threatPanel.className = 'panel panel-threats';
 
-  const renderRack = mountServerRack(rackPanel);
-  const renderNet = mountNetworkMap(netPanel);
+  const rackHandle = mountServerRack(rackPanel);
+  const netHandle = mountNetworkMap(netPanel);
   const renderThreats = mountThreatBoard(threatPanel);
+
+  const toast = mountMomentToast(toastHost);
 
   let carousel: Carousel | null = null;
   let currentLayout: 'grid' | 'carousel' = 'grid';
@@ -88,10 +112,10 @@ export function mountMonitor(host: HTMLElement): Monitor {
 
   return {
     render(state) {
-      renderStrip(state);
+      topStripHandle.render(state);
       renderStatus(state);
-      renderRack(state);
-      renderNet(state);
+      rackHandle.render(state);
+      netHandle.render(state);
       renderThreats(state);
       renderLog(state);
       sparkline.render(state.history.inbound, state.history.outbound);
@@ -110,9 +134,15 @@ export function mountMonitor(host: HTMLElement): Monitor {
       summaryHost.innerHTML = '';
       summaryHost.appendChild(el);
     },
+    topStrip: () => topStripHandle,
+    servers: () => rackHandle,
+    network: () => netHandle,
+    floatHost: () => floatHost,
+    momentToast: () => toast,
     dispose() {
       offBp();
       sparkline.dispose();
+      toast.dispose();
     },
   };
 }

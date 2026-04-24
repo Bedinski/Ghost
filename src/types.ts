@@ -69,6 +69,16 @@ export interface ChoiceEffect {
   revealHidden?: boolean;
 }
 
+export type ExecutePanel = 'servers' | 'network' | 'topstrip' | 'log' | 'all';
+
+export interface ExecuteHint {
+  panel: ExecutePanel;
+  glyph: string;       // icon id from icons.ts
+  badge: string;       // short chip text, e.g. "WAF" or "+1 app"
+  target?: string;     // optional: a node id on the network map ('edge' | 'lb' | 'app' | 'data')
+  tone?: 'cyan' | 'magenta' | 'green' | 'amber';
+}
+
 export interface Choice {
   id: string;
   name: string;
@@ -81,6 +91,7 @@ export interface Choice {
   ongoing?: Omit<Modifier, 'id' | 'source' | 'remaining'> & { duration?: number };
   upside: string[];
   downside: string[];
+  executeHint?: ExecuteHint;
 }
 
 export interface LogEntry {
@@ -106,6 +117,7 @@ export interface MetaState {
   unlocked: string[];
   perks: string[];
   tutorialSeen?: boolean;
+  observeFamiliarity?: number;
   lastSeenVersion?: number;
 }
 

@@ -1,5 +1,28 @@
 import type { GameState } from '../types';
 
+export interface TopStripHandle {
+  render(s: GameState): void;
+  anchorFor(key: 'budget' | 'security' | 'reputation' | 'techDebt' | 'day'): DOMRect | null;
+}
+
+export function mountTopStripWithAnchors(host: HTMLElement): TopStripHandle {
+  const render = mountTopStrip(host);
+  return {
+    render,
+    anchorFor(key) {
+      const sel: Record<string, string> = {
+        budget: '.ts-budget-num',
+        security: '.arc-num',
+        reputation: '.ts-rep-num',
+        techDebt: '.ts-debt-num',
+        day: '.ts-day-num',
+      };
+      const el = host.querySelector<HTMLElement>(sel[key] ?? '');
+      return el ? el.getBoundingClientRect() : null;
+    },
+  };
+}
+
 export function mountTopStrip(host: HTMLElement): (s: GameState) => void {
   host.innerHTML = `
     <div class="top-strip">
