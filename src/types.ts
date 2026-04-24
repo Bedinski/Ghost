@@ -105,6 +105,7 @@ export interface MetaState {
   totalXp: number;
   unlocked: string[];
   perks: string[];
+  tutorialSeen?: boolean;
   lastSeenVersion?: number;
 }
 

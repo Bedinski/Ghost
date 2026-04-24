@@ -278,10 +278,13 @@ export function tick(prev: GameState): GameState {
 
 export function advanceDay(prev: GameState): GameState {
   const mods = aggregateMods(prev.modifiers);
+  // Daily customer revenue scales with reputation. High trust = more
+  // customers = more cash. Low trust = customers leaving = trickle.
+  const revenue = Math.round(40 + prev.reputation * 0.9);
   const next: GameState = {
     ...prev,
     day: prev.day + 1,
-    budget: prev.budget - mods.upkeep,
+    budget: prev.budget - mods.upkeep + revenue,
     techDebt: Math.max(0, prev.techDebt + mods.techDebtPerDay + 2),
     reputation: clamp(prev.reputation + mods.reputationPerDay, 0, 100),
     modifiers: prev.modifiers.map((m) => ({ ...m, remaining: m.remaining - 1 })).filter((m) => m.remaining > 0),
@@ -290,6 +293,6 @@ export function advanceDay(prev: GameState): GameState {
     allServersOfflineTicks: 0,
   };
   log(next, `— Day ${next.day} begins —`, 'info');
-  if (mods.upkeep > 0) log(next, `Upkeep -$${mods.upkeep}`, 'info');
+  log(next, `Revenue +$${revenue} · upkeep -$${mods.upkeep}`, 'info');
   return next;
 }

@@ -122,6 +122,34 @@
 
   /* wider tap targets */
   .rs-restart { padding: 14px 30px; width: 100%; max-width: 280px; }
+
+  /* briefing on mobile: full-bleed, fewer paddings */
+  .briefing { padding: 0; }
+  .brf-frame {
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+    padding-top: calc(16px + env(safe-area-inset-top));
+  }
+  .brf-stage { min-height: 200px; }
+  .brf-title { letter-spacing: 0.2em; }
+  .brf-body { font-size: 14px; }
+  .brf-foot { flex-wrap: wrap; gap: 10px; }
+  .brf-nav { width: 100%; }
+  .brf-nav button { flex: 1; padding: 14px 10px; }
+
+  /* day end card */
+  .de-card { padding: 14px; gap: 10px; }
+  .de-stats { grid-template-columns: 1fr 1fr; }
+  .de-day { font-size: 18px; letter-spacing: 0.15em; }
+  .de-next { padding: 14px 18px; }
+
+  /* choice header tightens */
+  .choice-day { font-size: 10px; padding: 2px 8px; }
+  .choice-sub { font-size: 12px; padding: 0 8px; }
 }
 
 /* Landscape phone — hint or adapt */

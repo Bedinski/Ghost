@@ -87,6 +87,7 @@ export function initialState(meta: MetaState): GameState {
 export function availableChoices(state: GameState): string[] {
   const unlocked = new Set(state.meta.unlocked);
   return CHOICES.filter((c) => {
+    if (c.id === 'breather') return false; // safety net only — never random-drawn
     if (state.takenChoices.includes(c.id)) return false;
     if (c.tier >= 1 && c.id === 'zero-trust' && !unlocked.has('zero-trust')) return false;
     if (c.id === 'deploy-waf' && !unlocked.has('deploy-waf') && c.tier >= 1) return false;
@@ -114,6 +115,15 @@ export function drawChoices(state: GameState): string[] {
     const idx = Math.floor(rng() * copy.length);
     draws.push(copy.splice(idx, 1)[0]);
   }
+
+  // Safety net: if the player can't afford any of the random draws OR the
+  // budget is critically low, swap one slot for the always-free 'breather'
+  // choice so the loop is never softlocked.
+  const cheapest = Math.min(...draws.map((id) => CHOICES_BY_ID.get(id)?.cost ?? 0));
+  if (state.budget < cheapest || state.budget < 60) {
+    if (draws.length === 0) draws.push('breather');
+    else draws[draws.length - 1] = 'breather';
+  }
   return draws;
 }
 
@@ -125,7 +135,8 @@ export function applyChoice(state: GameState, id: string): GameState {
   const s: GameState = {
     ...state,
     budget: state.budget - c.cost,
-    takenChoices: [...state.takenChoices, id],
+    // 'breather' is a repeatable safety net — don't burn it from the pool.
+    takenChoices: id === 'breather' ? state.takenChoices : [...state.takenChoices, id],
   };
 
   const imm = c.immediate;

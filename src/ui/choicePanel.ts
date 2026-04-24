@@ -14,13 +14,17 @@ export function mountChoicePanel(host: HTMLElement): ChoicePanelHandle {
   overlay.innerHTML = `
     <div class="choice-title">
       <span class="choice-pulse"></span>
-      <h2>choose your next move</h2>
+      <span class="choice-day"></span>
+      <h2 class="choice-h2">ship one improvement</h2>
+      <p class="choice-sub">you can only pick ONE. read the orange line — every choice has a downside.</p>
       <span class="choice-hint">press <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> or tap a card</span>
     </div>
     <div class="choice-cards"></div>
   `;
   host.appendChild(overlay);
   const cards = overlay.querySelector<HTMLElement>('.choice-cards')!;
+  const dayEl = overlay.querySelector<HTMLElement>('.choice-day')!;
+  const subEl = overlay.querySelector<HTMLElement>('.choice-sub')!;
 
   let resolveFn: ((id: string) => void) | null = null;
   let keyHandler: ((e: KeyboardEvent) => void) | null = null;
@@ -49,6 +53,13 @@ export function mountChoicePanel(host: HTMLElement): ChoicePanelHandle {
     open(state) {
       return new Promise<string>((resolve) => {
         resolveFn = resolve;
+        // Day-aware framing so players know what they're being asked
+        dayEl.textContent = `DAY ${state.day}`;
+        if (state.day <= 1) {
+          subEl.textContent = 'this is your first call. pick the move you think is right — every choice has a downside.';
+        } else {
+          subEl.textContent = `you have $${Math.round(state.budget)} to spend. you can only ship ONE thing today.`;
+        }
         cards.innerHTML = '';
         const ids = state.offeredChoices;
         ids.forEach((id, idx) => {

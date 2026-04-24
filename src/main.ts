@@ -9,7 +9,7 @@ import type { GameState, ThreatKind } from './types';
 import { createStore } from './game/store';
 import { applyChoice, checkFail, drawChoices, initialState } from './game/state';
 import { advanceDay, spawnThreat, TICKS_PER_DAY, TICK_MS, tick } from './game/simulation';
-import { applyRunResult, computeRunXp, loadMeta, saveMeta } from './game/progression';
+import { applyRunResult, computeRunXp, loadMeta, markTutorialSeen, saveMeta } from './game/progression';
 
 import { mountBackground } from './scene/background';
 import { mountRoom } from './scene/room';
@@ -20,6 +20,8 @@ import { runBootSequence } from './scene/boot';
 import { mountMonitor } from './ui/monitor';
 import { mountChoicePanel } from './ui/choicePanel';
 import { mountRunSummary } from './ui/runSummary';
+import { mountBriefing } from './ui/briefing';
+import { mountDayEnd, snapshot } from './ui/dayEnd';
 
 const app = document.getElementById('app')!;
 app.classList.add('stage');
@@ -46,9 +48,10 @@ mountBezel(monitorLayer, screen);
 const monitor = mountMonitor(screen);
 const choicePanel = mountChoicePanel(monitor.choiceOverlayHost());
 const summary = mountRunSummary(screen);
+const briefing = mountBriefing(screen);
+const dayEnd = mountDayEnd(screen);
 const fx = mountFx(monitorLayer);
 
-// pointer parallax for desktop background
 if (!window.matchMedia('(pointer: coarse)').matches) {
   window.addEventListener('pointermove', (e) => {
     const x = (e.clientX / window.innerWidth) * 2 - 1;
@@ -58,28 +61,32 @@ if (!window.matchMedia('(pointer: coarse)').matches) {
 }
 
 let store = createStore<GameState>(initialState(loadMeta()));
-let lastThreatCount = 0;
 
-store.subscribe((s, prev) => {
-  monitor.render(s);
-  // threat landing fx
-  if (s.threats.length > prev.threats.length) {
-    fx.flashAlert();
-    fx.shake(1.2);
-    fx.glitch();
-    monitor.showThreatsPanel();
-  }
-  lastThreatCount = s.threats.length;
-});
-
+function attachStoreSubs() {
+  store.subscribe((s, prev) => {
+    monitor.render(s);
+    if (s.threats.length > prev.threats.length) {
+      fx.flashAlert();
+      fx.shake(1.2);
+      fx.glitch();
+      monitor.showThreatsPanel();
+    }
+  });
+}
+attachStoreSubs();
 monitor.render(store.get());
 
 async function runGame() {
-  // boot
   await runBootSequence(screen, store.get().company.name);
   store.update((s) => ({ ...s, phase: 'intro' }));
 
-  // jump straight into day 1
+  // First-run only: explain the game before the first choice.
+  if (!store.get().meta.tutorialSeen) {
+    await briefing.open();
+    const meta = markTutorialSeen();
+    store.update((s) => ({ ...s, meta }));
+  }
+
   await nextDay();
   loopDays();
 }
@@ -87,11 +94,27 @@ async function runGame() {
 async function loopDays() {
   while (true) {
     await choicePhase();
+    const before = snapshot(store.get());
+    const logSeq = store.get().logSeq;
+
     const fail = await simPhase();
     if (fail) {
       await handleDeath(fail);
       return;
     }
+
+    // Collect the names of incidents that resolved or landed during this sim,
+    // by inspecting the new log entries we accumulated.
+    const after = store.get();
+    const fresh = after.log.filter((e) => e.id > logSeq);
+    const resolved = fresh
+      .filter((e) => e.text.startsWith('✓ '))
+      .map((e) => e.text.replace(/^✓\s*/, '').replace(/\s*neutralised\s*$/i, ''));
+    const landed = fresh
+      .filter((e) => e.text.startsWith('✗ '))
+      .map((e) => e.text.replace(/^✗\s*/, '').replace(/\s*landed.*$/i, ''));
+
+    await dayEnd.open(before, after, resolved, landed);
     await nextDay();
   }
 }
@@ -139,7 +162,7 @@ async function handleDeath(reason: string) {
   store.update((s) => ({ ...s, phase: 'death', deathReason: reason }));
   await fx.signalLoss();
   const s = store.get();
-  const resolved = s.takenChoices.length; // simple proxy
+  const resolved = s.takenChoices.length;
   const xp = computeRunXp(s.day, resolved, s.reputation);
   const { meta, newlyUnlocked } = applyRunResult(s.meta, xp, s.day);
   saveMeta(meta);
@@ -152,21 +175,11 @@ async function handleDeath(reason: string) {
 function restart() {
   const fresh = initialState(loadMeta());
   store = createStore<GameState>(fresh);
-  lastThreatCount = 0;
-  store.subscribe((s, prev) => {
-    monitor.render(s);
-    if (s.threats.length > prev.threats.length) {
-      fx.flashAlert();
-      fx.shake(1.2);
-      fx.glitch();
-      monitor.showThreatsPanel();
-    }
-  });
+  attachStoreSubs();
   monitor.render(fresh);
   runGame();
 }
 
-// dev-only: shift + 1..9 spawns threats for playtesting
 const DEV_KEYS: Record<string, ThreatKind> = {
   '1': 'ddos-volumetric',
   '2': 'ddos-l7',
@@ -192,6 +205,3 @@ window.addEventListener('keydown', (e) => {
 });
 
 runGame();
-
-// Suppress unused warnings for helpers we keep for runtime correctness
-void lastThreatCount;

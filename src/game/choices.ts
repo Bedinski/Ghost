@@ -4,6 +4,17 @@ import type { Choice } from '../types';
 // tier so early runs feel constrained and late runs feel powerful.
 export const CHOICES: Choice[] = [
   {
+    id: 'breather',
+    name: 'Catch Your Breath',
+    desc: "No big ship today. Burn down the ticket queue, fix some flakes, breathe.",
+    icon: 'wrench',
+    cost: 0,
+    tier: 0,
+    immediate: { reputation: 1, securityPosture: 2, techDebt: -3 },
+    upside: ['$0 cost', '-3 tech debt', '+2 security · +1 reputation'],
+    downside: ['No new capability. If attacks land you have nothing extra to lean on.'],
+  },
+  {
     id: 'loadtest-scale',
     name: 'Loadtest & Scale',
     desc: 'Spin up another app server after a load test reveals the bottleneck.',

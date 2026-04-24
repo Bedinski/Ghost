@@ -20,8 +20,17 @@ const DEFAULT_META: MetaState = {
   totalXp: 0,
   unlocked: [],
   perks: [],
+  tutorialSeen: false,
   lastSeenVersion: 1,
 };
+
+export function markTutorialSeen(): MetaState {
+  const meta = loadMeta();
+  if (meta.tutorialSeen) return meta;
+  const next = { ...meta, tutorialSeen: true };
+  saveMeta(next);
+  return next;
+}
 
 export function loadMeta(): MetaState {
   try {
