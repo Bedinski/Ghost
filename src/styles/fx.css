@@ -1,0 +1,162 @@
+/* ============================== KEYFRAMES ============================== */
+@keyframes pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+@keyframes pulse-small {
+  0%, 100% { transform: scale(0.92); opacity: 0.75; }
+  50% { transform: scale(1.08); opacity: 1; }
+}
+@keyframes pulse-line {
+  0%, 100% { opacity: 0.3; width: 56px; }
+  50% { opacity: 1; width: 92px; }
+}
+@keyframes reflect {
+  0% { transform: translateX(-60%); }
+  100% { transform: translateX(300%); }
+}
+@keyframes flip {
+  0% { transform: rotateX(90deg); opacity: 0; }
+  100% { transform: rotateX(0deg); opacity: 1; }
+}
+@keyframes log-in {
+  from { opacity: 0; transform: translateX(-6px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes rack-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes rack-out {
+  to { opacity: 0; transform: translateY(-8px); }
+}
+@keyframes card-in {
+  from { opacity: 0; transform: scale(0.97) translateY(6px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes card-out {
+  to { opacity: 0; transform: scale(0.97) translateY(-6px); }
+}
+@keyframes card-rise {
+  from { opacity: 0; transform: translateY(20px) perspective(800px) rotateX(18deg); }
+  to { opacity: 1; transform: translateY(0) perspective(800px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)); }
+}
+@keyframes card-pick {
+  0% { transform: scale(1) translateY(0); }
+  30% { transform: scale(1.04) translateY(-4px); }
+  100% { transform: scale(0.94) translateY(30px); opacity: 0; }
+}
+@keyframes deny {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-4px); }
+  40%, 80% { transform: translateX(4px); }
+}
+@keyframes crit-pulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(255, 51, 85, 0.15); }
+  50% { box-shadow: 0 0 22px rgba(255, 51, 85, 0.5); }
+}
+@keyframes shimmer {
+  0% { --shimmer-angle: 0deg; }
+  100% { --shimmer-angle: 360deg; }
+}
+@keyframes glitch-text {
+  0%, 100% { text-shadow: 0 0 20px rgba(255, 51, 85, 0.7), 0 0 60px rgba(255, 51, 85, 0.3); transform: translate(0,0); }
+  10% { text-shadow: -2px 0 var(--cyan), 2px 0 var(--magenta); transform: translate(1px, 0); }
+  20% { text-shadow: 2px 0 var(--cyan), -2px 0 var(--magenta); transform: translate(-1px, 0); }
+  30% { text-shadow: 0 0 20px rgba(255, 51, 85, 0.7); transform: translate(0,0); }
+}
+@keyframes static-noise {
+  0% { opacity: 0.5; }
+  100% { opacity: 0.3; }
+}
+@keyframes debris {
+  0% { background-position: 0 0; }
+  100% { background-position: 16px 0; }
+}
+@keyframes unlock-line {
+  from { opacity: 0; transform: translateY(6px); letter-spacing: 0.5em; }
+  to { opacity: 1; transform: translateY(0); letter-spacing: 0.05em; }
+}
+@keyframes boot-bloom {
+  0% { opacity: 0; }
+  20% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ============================== FX LAYER ============================== */
+.fx-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 40;
+  overflow: hidden;
+}
+.fx-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.5) 100%);
+  pointer-events: none;
+}
+.fx-alert, .fx-ok, .fx-glitch, .fx-signalloss {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+.fx-alert {
+  background: radial-gradient(ellipse at center, rgba(255, 51, 85, 0) 40%, rgba(255, 51, 85, 0.3) 100%);
+  mix-blend-mode: screen;
+}
+.fx-alert.fx-active { animation: fx-alert-pulse 650ms ease-out; }
+@keyframes fx-alert-pulse {
+  0% { opacity: 0; }
+  15% { opacity: 1; }
+  100% { opacity: 0; }
+}
+.fx-ok { background: radial-gradient(ellipse at center, rgba(57, 255, 165, 0) 55%, rgba(57, 255, 165, 0.18) 100%); mix-blend-mode: screen; }
+.fx-ok.fx-active { animation: fx-alert-pulse 500ms ease-out; }
+
+.fx-glitch {
+  background: repeating-linear-gradient(180deg, rgba(53, 243, 255, 0.12) 0 2px, transparent 2px 6px);
+  mix-blend-mode: screen;
+}
+.fx-glitch.fx-active { animation: glitch-tear 420ms steps(6) forwards; }
+@keyframes glitch-tear {
+  0% { opacity: 0; transform: translate(0, 0); }
+  10% { opacity: 1; transform: translate(-8px, 2px); }
+  25% { transform: translate(10px, -3px); }
+  40% { transform: translate(-4px, 4px); }
+  60% { transform: translate(6px, -2px); }
+  100% { opacity: 0; transform: translate(0, 0); }
+}
+
+.fx-signalloss { background: #000; opacity: 0; }
+.fx-signalloss.fx-active { animation: signal-loss 1.8s ease forwards; }
+@keyframes signal-loss {
+  0% { opacity: 0; }
+  15% { opacity: 0.6; background: #fff; }
+  20% { opacity: 0.2; background: #000; }
+  30% { opacity: 0.9; background: #000; }
+  60% { opacity: 1; background: #000; }
+  100% { opacity: 1; background: #000; }
+}
+
+.is-shaking {
+  animation: shake calc(380ms) cubic-bezier(.36,.07,.19,.97) both;
+}
+@keyframes shake {
+  10%, 90% { transform: translate3d(calc(-1px * var(--shake-intensity, 1)), 0, 0); }
+  20%, 80% { transform: translate3d(calc(2px * var(--shake-intensity, 1)), 0, 0); }
+  30%, 50%, 70% { transform: translate3d(calc(-4px * var(--shake-intensity, 1)), 0, 0); }
+  40%, 60% { transform: translate3d(calc(4px * var(--shake-intensity, 1)), 0, 0); }
+}
+
+/* ============================== REDUCED MOTION ============================== */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .fx-layer, .bezel-scanlines, .bezel-reflection { display: none; }
+}

@@ -1,0 +1,41 @@
+:root {
+  --bg-0: #04060c;
+  --bg-1: #080c18;
+  --bg-2: #0c1426;
+  --bg-3: #121c36;
+  --ink: #d7e3ff;
+  --ink-dim: #88a0c6;
+  --ink-mute: #53678a;
+
+  --cyan: #35f3ff;
+  --cyan-glow: 0 0 12px rgba(53, 243, 255, 0.55);
+  --cyan-soft: rgba(53, 243, 255, 0.18);
+
+  --magenta: #ff3df0;
+  --magenta-glow: 0 0 12px rgba(255, 61, 240, 0.55);
+  --magenta-soft: rgba(255, 61, 240, 0.18);
+
+  --amber: #ffb347;
+  --amber-glow: 0 0 10px rgba(255, 179, 71, 0.55);
+  --amber-soft: rgba(255, 179, 71, 0.15);
+
+  --red: #ff3355;
+  --red-glow: 0 0 14px rgba(255, 51, 85, 0.6);
+
+  --green: #39ffa5;
+  --green-glow: 0 0 10px rgba(57, 255, 165, 0.5);
+
+  --border: rgba(53, 243, 255, 0.18);
+  --border-mag: rgba(255, 61, 240, 0.18);
+  --panel: rgba(8, 12, 24, 0.72);
+  --panel-hi: rgba(14, 22, 42, 0.82);
+
+  --font-display: 'Rajdhani', 'Orbitron', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+
+  --r-sm: 4px;
+  --r-md: 8px;
+  --r-lg: 14px;
+
+  --shake-intensity: 1;
+}

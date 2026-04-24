@@ -1,0 +1,6 @@
+/*
+ * Fonts are loaded from Google Fonts over CDN in production. For offline work,
+ * a self-hosted subset lives under /public/fonts (when added). The @import is
+ * kept at the top of the main entry so it resolves first.
+ */
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');

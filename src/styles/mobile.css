@@ -1,0 +1,132 @@
+/* ============================== RESPONSIVE ============================== */
+
+/* Medium (tablet / small laptop) — shrink bezel, tighten grid */
+@media (max-width: 1100px) {
+  .panels--grid { grid-template-columns: 1fr 1.5fr 1fr; gap: 8px; }
+  .ts-brand .ts-role { display: none; }
+}
+
+/* Compact — 2-column grid, slim bezel */
+@media (max-width: 900px) {
+  .bezel-frame { height: min(100vh, 900px); }
+  .bezel-outer { padding: 8px 8px 22px; border-radius: 14px; }
+  .m-body { padding: 8px 10px 10px; grid-template-rows: 1fr 82px 110px; }
+  .top-strip {
+    grid-template-columns: auto 1fr auto auto;
+    gap: 10px;
+    padding: 8px 10px;
+  }
+  .ts-brand { grid-column: 1 / 2; }
+  .ts-day { grid-column: 2 / 3; }
+  .ts-budget { grid-column: 3 / 4; }
+  .ts-sec { grid-column: 4 / 5; }
+  .ts-rep, .ts-debt { display: none; }
+  .choice-cards { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+  .rs-stats { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* Phone portrait — single column, carousel, bottom-sheet choices */
+@media (max-width: 520px) {
+  body { font-size: 13px; }
+
+  /* remove desk/bezel chrome, inline the screen */
+  .room-svg { opacity: 0.4; transform: scale(1.4); }
+  .bezel-frame {
+    width: 100%;
+    height: 100%;
+    padding: 0;
+  }
+  .bezel-outer {
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  .bezel-edge--top, .bezel-edge--bottom { display: none; }
+  .bezel-inner {
+    border-radius: 0;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    box-shadow: none;
+  }
+  .bezel-scanlines, .bezel-reflection { display: none; }
+
+  .top-strip {
+    grid-template-columns: auto 1fr auto auto;
+    gap: 8px;
+    padding: 6px 8px;
+  }
+  .ts-glyph { font-size: 22px; }
+  .ts-company { font-size: 12px; }
+  .ts-stat > span { font-size: 16px; }
+  .ts-rep, .ts-debt, .ts-role { display: none; }
+  .ts-sec .arc { width: 52px; height: 30px; }
+  .arc-num { font-size: 11px; }
+
+  .m-body {
+    padding: 6px 8px 8px;
+    gap: 6px;
+    grid-template-rows: 1fr 70px 100px;
+  }
+
+  .m-chart { height: 70px; }
+  .m-log { height: 100px; padding: 6px 8px; }
+  .log-list { font-size: 11.5px; }
+
+  /* carousel dot nav always visible, slightly bigger for touch */
+  .car-dot { width: 12px; height: 12px; }
+
+  .panel { padding: 10px 10px 22px; border-radius: 6px; }
+  .panel-head h3 { font-size: 12px; }
+
+  /* choice cards become a bottom sheet */
+  .choice-overlay {
+    justify-content: flex-end;
+    padding: 0;
+    gap: 0;
+    background: linear-gradient(180deg, rgba(2,4,10,0) 0%, rgba(2,4,10,0.75) 45%, rgba(2,4,10,0.95) 100%);
+  }
+  .choice-title {
+    padding: 16px 14px 10px;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .choice-title h2 { font-size: 16px; letter-spacing: 0.2em; }
+  .choice-hint { display: none; }
+  .choice-cards {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 0 12px 16px;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+    max-height: calc(100% - 80px);
+    overflow-y: auto;
+    animation: sheet-up 420ms cubic-bezier(.22,.8,.22,1);
+  }
+  @keyframes sheet-up { from { transform: translateY(40%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+  .cc {
+    padding: 12px 14px 14px;
+    grid-template-columns: auto auto 1fr auto;
+    min-height: 140px;
+    transform: none !important;
+  }
+  .cc:hover { transform: none !important; }
+  .cc-name { font-size: 14px; }
+  .cc-desc { font-size: 11.5px; }
+  .cc-up li, .cc-down li { font-size: 10.5px; }
+
+  .rs-stats { grid-template-columns: 1fr 1fr; }
+  .rs-inner h1 { letter-spacing: 0.25em; }
+
+  /* wider tap targets */
+  .rs-restart { padding: 14px 30px; width: 100%; max-width: 280px; }
+}
+
+/* Landscape phone — hint or adapt */
+@media (max-height: 420px) and (orientation: landscape) {
+  .m-body { grid-template-rows: 1fr 60px 80px; }
+  .m-log { height: 80px; }
+  .ts-role { display: none; }
+}
