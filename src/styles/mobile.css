@@ -65,6 +65,12 @@
   .ts-sec .arc { width: 52px; height: 30px; }
   .arc-num { font-size: 11px; }
 
+  /* Compact status banner — stay on one line, ellipsize message */
+  .status-banner { padding: 6px 10px; gap: 8px; font-size: 11px; }
+  .sb-tier { font-size: 11px; }
+  .sb-msg { font-size: 11px; }
+  .sb-pointer { display: none; }
+
   .m-body {
     padding: 6px 8px 8px;
     gap: 6px;

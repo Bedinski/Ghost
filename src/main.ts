@@ -71,6 +71,15 @@ function attachStoreSubs() {
       fx.glitch();
       monitor.showThreatsPanel();
     }
+    // Detect "landed" events from new log entries — bigger shake than spawn
+    // so the moment the threat times out is unmistakable.
+    const newLogs = s.log.slice(prev.log.length);
+    if (newLogs.some((e) => e.text.startsWith('✗ '))) {
+      fx.flashAlert();
+      fx.shake(1.6);
+      fx.glitch();
+      monitor.showThreatsPanel();
+    }
   });
 }
 attachStoreSubs();

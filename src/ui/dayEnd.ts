@@ -31,6 +31,7 @@ export function mountDayEnd(host: HTMLElement): DayEndHandle {
         <span class="de-tag">day complete</span>
         <h2 class="de-day"></h2>
       </header>
+      <div class="de-callout"></div>
       <ul class="de-stats"></ul>
       <p class="de-flavor"></p>
       <div class="de-incidents"></div>
@@ -40,6 +41,7 @@ export function mountDayEnd(host: HTMLElement): DayEndHandle {
   host.appendChild(el);
 
   const dayEl = el.querySelector<HTMLElement>('.de-day')!;
+  const calloutEl = el.querySelector<HTMLElement>('.de-callout')!;
   const statsEl = el.querySelector<HTMLElement>('.de-stats')!;
   const flavorEl = el.querySelector<HTMLElement>('.de-flavor')!;
   const incidentsEl = el.querySelector<HTMLElement>('.de-incidents')!;
@@ -65,6 +67,26 @@ export function mountDayEnd(host: HTMLElement): DayEndHandle {
         const dDebt = Math.round(after.techDebt - snap.techDebt);
 
         dayEl.textContent = `Day ${snap.day} resolved`;
+
+        // Loud callout for landed incidents — first thing the player reads.
+        if (landedNames.length > 0) {
+          calloutEl.classList.add('is-bad');
+          calloutEl.classList.remove('is-good');
+          calloutEl.innerHTML = `
+            <span class="de-callout-tag">incident landed</span>
+            <span class="de-callout-text">${landedNames.length === 1 ? landedNames[0] + ' got through' : landedNames.length + ' incidents got through'} — that took the rep hit you see below</span>
+          `;
+        } else if (resolvedNames.length > 0) {
+          calloutEl.classList.add('is-good');
+          calloutEl.classList.remove('is-bad');
+          calloutEl.innerHTML = `
+            <span class="de-callout-tag">held the line</span>
+            <span class="de-callout-text">${resolvedNames.join(', ')} ${resolvedNames.length === 1 ? 'was' : 'were'} neutralised by your stack</span>
+          `;
+        } else {
+          calloutEl.classList.remove('is-bad', 'is-good');
+          calloutEl.innerHTML = '';
+        }
 
         statsEl.innerHTML = [
           renderStat('reputation', after.reputation, dRep, true),

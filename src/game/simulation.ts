@@ -207,21 +207,28 @@ export function tick(prev: GameState): GameState {
       return { ...t, progress, ttl: t.ttl - ttlPenalty - (countered ? 1 : 0.3) };
     })
     .filter((t) => {
+      const def = THREATS[t.kind];
+      const countered = def.counters.find((c) => state.takenChoices.includes(c));
       if (t.progress <= 0 && state.tick > 5) {
-        log(state, `✓ ${t.name} neutralised`, 'ok');
+        const by = countered ? ` by ${countered.replace(/-/g, ' ')}` : '';
+        log(state, `✓ ${t.name} NEUTRALISED${by}`, 'ok');
         return false;
       }
       if (t.ttl <= 0) {
         if (t.legit) {
-          log(state, `• ${t.name} settled`, 'info');
+          log(state, `• ${t.name} settled — customers happy`, 'info');
           state.reputation = clamp(state.reputation + 2, 0, 100);
         } else {
           const impact = 0.35 + (t.severity === 'crit' ? 0.6 : t.severity === 'high' ? 0.35 : 0.2);
           const damage = impact * (1 - mods.firewallBlockPct * 0.3);
-          state.reputation = clamp(state.reputation - damage * 8, 0, 100);
-          state.securityPosture = clamp(state.securityPosture - damage * 6, 0, 100);
+          const repHit = Math.round(damage * 8);
+          const secHit = Math.round(damage * 6);
+          state.reputation = clamp(state.reputation - repHit, 0, 100);
+          state.securityPosture = clamp(state.securityPosture - secHit, 0, 100);
           if (t.kind === 'exfil' || t.kind === 'ransomware' || t.kind === 'sqli') state.breachArmed = true;
-          log(state, `✗ ${t.name} landed (-${(damage * 8).toFixed(0)} rep)`, 'crit');
+          // Loud, attributed log line so cause/effect is unmissable.
+          const counterHint = def.counters.slice(0, 2).map((c) => c.replace(/-/g, ' ')).join(' / ');
+          log(state, `✗ ${t.name.toUpperCase()} LANDED — rep -${repHit}, posture -${secHit} · counter next time: ${counterHint}`, 'crit');
         }
         return false;
       }

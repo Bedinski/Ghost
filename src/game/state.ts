@@ -1,6 +1,7 @@
 import type { GameState, MetaState, Server, ServerRole } from '../types';
 import { mulberry32 } from './store';
 import { CHOICES, CHOICES_BY_ID } from './choices';
+import { THREATS } from './events';
 
 const GLYPHS = ['◇', '◆', '◉', '◈', '◎', '◐', '◑', '◒', '◓', '▣', '▤', '▥', '▦', '▨'];
 const COMPANIES = [
@@ -109,20 +110,41 @@ export function drawChoices(state: GameState): string[] {
   const rng = mulberry32((state.rngSeed ^ (state.day * 0x9e3779b1)) >>> 0);
   const pool = availableChoices(state);
   const slots = state.meta.perks.includes('perk-reveal') ? 4 : 3;
-  const draws: string[] = [];
   const copy = [...pool];
-  for (let i = 0; i < Math.min(slots, copy.length); i++) {
+
+  // When threats are active, ensure at least one offered slot is a counter
+  // for the highest-severity threat the player can still afford. This keeps
+  // the loop *agentful* — the player should never feel like the choices are
+  // unrelated to the screen.
+  const draws: string[] = [];
+  const activeNonLegit = state.threats.filter((t) => !t.legit);
+  if (activeNonLegit.length > 0) {
+    const lead =
+      activeNonLegit.find((t) => t.severity === 'crit') ??
+      activeNonLegit.find((t) => t.severity === 'high') ??
+      activeNonLegit[0];
+    const counterIds = THREATS[lead.kind].counters;
+    const affordableCounter = counterIds
+      .filter((id) => copy.includes(id))
+      .filter((id) => (CHOICES_BY_ID.get(id)?.cost ?? 0) <= state.budget);
+    if (affordableCounter.length > 0) {
+      const pick = affordableCounter[Math.floor(rng() * affordableCounter.length)];
+      draws.push(pick);
+      copy.splice(copy.indexOf(pick), 1);
+    }
+  }
+
+  for (let i = draws.length; i < Math.min(slots, draws.length + copy.length); i++) {
     const idx = Math.floor(rng() * copy.length);
     draws.push(copy.splice(idx, 1)[0]);
   }
 
-  // Safety net: if the player can't afford any of the random draws OR the
-  // budget is critically low, swap one slot for the always-free 'breather'
-  // choice so the loop is never softlocked.
-  const cheapest = Math.min(...draws.map((id) => CHOICES_BY_ID.get(id)?.cost ?? 0));
-  if (state.budget < cheapest || state.budget < 60) {
+  // Safety net: if the player can't afford any draw OR is critically broke,
+  // swap one slot for the always-free 'breather' choice.
+  const cheapest = Math.min(...draws.map((id) => CHOICES_BY_ID.get(id)?.cost ?? Infinity));
+  if (draws.length === 0 || state.budget < cheapest || state.budget < 60) {
     if (draws.length === 0) draws.push('breather');
-    else draws[draws.length - 1] = 'breather';
+    else if (!draws.includes('breather')) draws[draws.length - 1] = 'breather';
   }
   return draws;
 }

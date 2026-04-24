@@ -1,5 +1,6 @@
 import type { GameState } from '../types';
 import { mountTopStrip } from './topStrip';
+import { mountStatusBanner } from './statusBanner';
 import { mountServerRack } from './serverRack';
 import { mountNetworkMap } from './networkMap';
 import { mountThreatBoard } from './threatBoard';
@@ -21,6 +22,7 @@ export function mountMonitor(host: HTMLElement): Monitor {
   host.innerHTML = `
     <div class="monitor">
       <div class="m-strip" data-region="strip"></div>
+      <div class="m-status" data-region="status"></div>
       <div class="m-body">
         <div class="m-panels"></div>
         <div class="m-chart">
@@ -35,6 +37,7 @@ export function mountMonitor(host: HTMLElement): Monitor {
   `;
 
   const strip = host.querySelector<HTMLElement>('[data-region="strip"]')!;
+  const statusHost = host.querySelector<HTMLElement>('[data-region="status"]')!;
   const panelsHost = host.querySelector<HTMLElement>('.m-panels')!;
   const chartHost = host.querySelector<HTMLElement>('.chart-host')!;
   const logHost = host.querySelector<HTMLElement>('[data-region="log"]')!;
@@ -42,6 +45,7 @@ export function mountMonitor(host: HTMLElement): Monitor {
   const summaryHost = host.querySelector<HTMLElement>('.m-summary-host')!;
 
   const renderStrip = mountTopStrip(strip);
+  const renderStatus = mountStatusBanner(statusHost);
   const sparkline = mountSparkline(chartHost);
   const renderLog = mountEventLog(logHost);
 
@@ -85,6 +89,7 @@ export function mountMonitor(host: HTMLElement): Monitor {
   return {
     render(state) {
       renderStrip(state);
+      renderStatus(state);
       renderRack(state);
       renderNet(state);
       renderThreats(state);
