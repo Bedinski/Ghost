@@ -39,7 +39,7 @@ export function mountTopStrip(host: HTMLElement): (s: GameState) => void {
         <label>security</label>
         <div class="arc"><svg viewBox="0 0 64 36"><path class="arc-track" d="M6 32 A26 26 0 0 1 58 32" stroke-width="5" fill="none"/><path class="arc-fill" d="M6 32 A26 26 0 0 1 58 32" stroke-width="5" fill="none"/></svg><span class="arc-num">0</span></div>
       </div>
-      <div class="ts-stat ts-rep"><label>reputation</label><div class="ts-rep-bar"><div class="ts-rep-fill"></div></div><span class="ts-rep-num">0</span></div>
+      <div class="ts-stat ts-rep"><label>reputation</label><div class="ts-rep-pips">${'<i></i>'.repeat(10)}</div><span class="ts-rep-num">0</span></div>
       <div class="ts-stat ts-debt"><label>tech debt</label><span class="ts-debt-num">0</span></div>
     </div>
   `;
@@ -50,7 +50,7 @@ export function mountTopStrip(host: HTMLElement): (s: GameState) => void {
   const budgetNum = host.querySelector<HTMLElement>('.ts-budget-num')!;
   const arcFill = host.querySelector<SVGPathElement>('.arc-fill')!;
   const arcNum = host.querySelector<HTMLElement>('.arc-num')!;
-  const repFill = host.querySelector<HTMLElement>('.ts-rep-fill')!;
+  const repPips = host.querySelectorAll<HTMLElement>('.ts-rep-pips i');
   const repNum = host.querySelector<HTMLElement>('.ts-rep-num')!;
   const debtNum = host.querySelector<HTMLElement>('.ts-debt-num')!;
 
@@ -85,9 +85,15 @@ export function mountTopStrip(host: HTMLElement): (s: GameState) => void {
     arcFill.classList.toggle('arc-fill--mid', sec >= 30 && sec < 65);
     arcFill.classList.toggle('arc-fill--high', sec >= 65);
 
+    // Reputation as 10 pips that fade out as customers churn — visceral
+    // visual without a "GOOD/BAD" label.
     const rep = Math.max(0, Math.min(100, s.reputation));
-    repFill.style.width = rep + '%';
-    repFill.classList.toggle('is-low', rep < 30);
+    const lit = Math.round(rep / 10);
+    repPips.forEach((pip, i) => {
+      const on = i < lit;
+      pip.classList.toggle('lit', on);
+      pip.classList.toggle('low', rep < 30 && on);
+    });
     repNum.textContent = String(Math.round(rep));
 
     debtNum.textContent = String(Math.round(s.techDebt));

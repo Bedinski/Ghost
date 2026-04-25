@@ -92,6 +92,16 @@ export interface Choice {
   upside: string[];
   downside: string[];
   executeHint?: ExecuteHint;
+  synergyWith?: string[];
+}
+
+export type SlotKind = 'react' | 'prepare-counter' | 'prepare-unlock' | 'build' | 'breather' | 'random';
+
+export interface OfferedSlot {
+  id: string;
+  kind: SlotKind;
+  tag?: string;       // e.g. "COUNTERS Volumetric DDoS" — pre-formatted
+  partner?: string;   // for synergy / unlock-target — the related choice name
 }
 
 export interface LogEntry {
@@ -136,6 +146,7 @@ export interface GameState {
   log: LogEntry[];
   logSeq: number;
   offeredChoices: string[];
+  offeredSlots: OfferedSlot[];
   takenChoices: string[];
   pendingThreats: ThreatKind[];
   inbound: number;

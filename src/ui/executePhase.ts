@@ -1,9 +1,11 @@
 import type { Choice, ChoiceEffect, ExecuteHint, GameState } from '../types';
 import { CHOICES_BY_ID } from '../game/choices';
+import { THREATS } from '../game/events';
 import { floatDelta } from './floatDelta';
 import { prefersReducedMotion } from './mediaQuery';
 import type { ServerRackHandle } from './serverRack';
 import type { NetworkMapHandle } from './networkMap';
+import type { ThreatBoardHandle } from './threatBoard';
 import type { TopStripHandle } from './topStrip';
 
 // EXECUTE phase: between the choice resolving and the WATCH phase running,
@@ -19,6 +21,7 @@ export interface ExecuteHosts {
   floatHost: HTMLElement;
   servers: ServerRackHandle;
   network: NetworkMapHandle;
+  threats: ThreatBoardHandle;
   topstrip: TopStripHandle;
 }
 
@@ -58,6 +61,16 @@ export function mountExecutePhase(_host: HTMLElement, hosts: ExecuteHosts): Exec
       for (const d of deltas) {
         const anchor = hosts.topstrip.anchorFor(d.key);
         promises.push(floatDelta(hosts.floatHost, anchor, d.text, d.tone));
+      }
+
+      // 3) If this choice resolves any active threat, fly a green confirmation
+      //    delta from the threat panel so cause/effect is unmistakable.
+      const resolved = before.threats.filter((t) => THREATS[t.kind].counters.includes(choiceId));
+      if (resolved.length > 0) {
+        const threatAnchor = hosts.threats.anchor();
+        for (const t of resolved) {
+          promises.push(floatDelta(hosts.floatHost, threatAnchor, `✓ ${t.name} resolved`, 'good'));
+        }
       }
 
       const minHold = reduced ? 350 : 1100;

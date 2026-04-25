@@ -58,6 +58,7 @@ const executePhase = mountExecutePhase(screen, {
   floatHost: monitor.floatHost(),
   servers: monitor.servers(),
   network: monitor.network(),
+  threats: monitor.threatBoard(),
   topstrip: monitor.topStrip(),
 });
 const fx = mountFx(monitorLayer);
@@ -169,7 +170,9 @@ function bumpFamiliarity() {
 async function nextDay() {
   store.update((s) => {
     const next = advanceDay(s);
-    next.offeredChoices = drawChoices(next);
+    const slots = drawChoices(next);
+    next.offeredSlots = slots;
+    next.offeredChoices = slots.map((slot) => slot.id);
     return next;
   });
 }
@@ -198,14 +201,16 @@ function watchPhase(): Promise<string | null> {
       lastSeenLogId = s.logSeq;
       for (const e of fresh) {
         if (e.text.startsWith('⚠ ')) {
-          monitor.momentToast().show(`▶ ${e.text.slice(2)}`, 'spawn');
-          freezeUntil = now + 700;
+          monitor.momentToast().show(`▶ ${e.text.slice(2)}`, 'spawn', 800);
+          freezeUntil = Math.max(freezeUntil, now + 800);
         } else if (e.text.startsWith('✗ ')) {
-          monitor.momentToast().show(e.text, 'land', 900);
-          freezeUntil = now + 900;
+          // Landings hit hardest — give the player a real pause to read,
+          // and keep the toast on screen the whole time.
+          monitor.momentToast().show(e.text, 'land', 1300);
+          freezeUntil = Math.max(freezeUntil, now + 1100);
         } else if (e.text.startsWith('✓ ')) {
-          monitor.momentToast().show(e.text, 'resolve');
-          freezeUntil = now + 700;
+          monitor.momentToast().show(e.text, 'resolve', 800);
+          freezeUntil = Math.max(freezeUntil, now + 700);
         }
       }
 

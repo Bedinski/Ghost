@@ -79,11 +79,24 @@ export function mountNetworkMap(host: HTMLElement): NetworkMapHandle {
   const renderedDefenses = new Set<string>();
 
   function render(s: GameState) {
-    // illuminate links based on traffic amount
-    const activity = Math.min(1, s.inbound / 220);
+    // Link saturation: ratio of effective inbound to total fleet capacity.
+    // Below 0.6 the links read calm cyan, between 0.6 and 0.95 they shift
+    // to amber, above 0.95 they go red. Visual at-a-glance "is the stack
+    // under stress?" without a label.
+    const totalCap =
+      s.servers.reduce(
+        (a, sv) => a + (sv.status === 'offline' ? 0 : sv.capacity * (sv.status === 'degraded' ? 0.55 : 1)),
+        0,
+      ) || 1;
+    const saturation = Math.min(1.4, s.inbound / totalCap);
+    let band: 'calm' | 'busy' | 'hot' = 'calm';
+    if (saturation >= 0.95) band = 'hot';
+    else if (saturation >= 0.6) band = 'busy';
+    const intensity = Math.min(1, 0.3 + saturation * 0.7);
     linkEls.forEach((el) => {
-      el.style.setProperty('--link-intensity', String(0.3 + activity * 0.7));
+      el.style.setProperty('--link-intensity', String(intensity));
     });
+    host.querySelector('.netmap-svg')?.setAttribute('data-band', band);
     nodeEls.forEach((el) => {
       el.classList.toggle('nm-node--alert', s.threats.length > 0);
     });

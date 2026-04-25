@@ -1,5 +1,5 @@
 import { CHOICES_BY_ID } from '../game/choices';
-import type { Choice, GameState } from '../types';
+import type { Choice, GameState, OfferedSlot } from '../types';
 import { icon } from './icons';
 
 export interface ChoicePanelHandle {
@@ -61,19 +61,24 @@ export function mountChoicePanel(host: HTMLElement): ChoicePanelHandle {
           subEl.textContent = `you have $${Math.round(state.budget)} to spend. you can only ship ONE thing today.`;
         }
         cards.innerHTML = '';
-        const ids = state.offeredChoices;
-        ids.forEach((id, idx) => {
-          const c = CHOICES_BY_ID.get(id);
+        // Prefer the strategic-slot offering if present (every modern run
+        // has it); fall back to the legacy id-only list to stay robust.
+        const slots: OfferedSlot[] =
+          state.offeredSlots && state.offeredSlots.length
+            ? state.offeredSlots
+            : state.offeredChoices.map<OfferedSlot>((id) => ({ id, kind: 'random' }));
+        slots.forEach((slot, idx) => {
+          const c = CHOICES_BY_ID.get(slot.id);
           if (!c) return;
           const canAfford = state.budget >= c.cost;
-          const el = renderCard(c, idx, canAfford);
+          const el = renderCard(c, slot, idx, canAfford);
           el.addEventListener('click', () => {
             if (!canAfford) {
               el.classList.add('cc--deny');
               setTimeout(() => el.classList.remove('cc--deny'), 400);
               return;
             }
-            pick(id, el);
+            pick(slot.id, el);
           });
           attachTilt(el);
           cards.appendChild(el);
@@ -82,12 +87,12 @@ export function mountChoicePanel(host: HTMLElement): ChoicePanelHandle {
 
         keyHandler = (e: KeyboardEvent) => {
           const idx = parseInt(e.key, 10) - 1;
-          if (Number.isNaN(idx) || idx < 0 || idx >= ids.length) return;
-          const id = ids[idx];
-          const c = CHOICES_BY_ID.get(id);
+          if (Number.isNaN(idx) || idx < 0 || idx >= slots.length) return;
+          const slot = slots[idx];
+          const c = CHOICES_BY_ID.get(slot.id);
           if (!c || state.budget < c.cost) return;
           const el = cards.children.item(idx) as HTMLElement | null;
-          if (el) pick(id, el);
+          if (el) pick(slot.id, el);
         };
         window.addEventListener('keydown', keyHandler);
       });
@@ -96,13 +101,26 @@ export function mountChoicePanel(host: HTMLElement): ChoicePanelHandle {
   };
 }
 
-function renderCard(c: Choice, idx: number, canAfford: boolean): HTMLElement {
+function slotChip(slot: OfferedSlot): string {
+  if (!slot.tag || slot.kind === 'random') return '';
+  const cls = `cc-slot cc-slot--${slot.kind}`;
+  let prefix = '';
+  if (slot.kind === 'react') prefix = '▶ ';
+  else if (slot.kind === 'prepare-counter') prefix = '→ ';
+  else if (slot.kind === 'prepare-unlock') prefix = '→ ';
+  else if (slot.kind === 'build') prefix = '✦ ';
+  else if (slot.kind === 'breather') prefix = '◯ ';
+  return `<span class="${cls}">${prefix}${slot.tag}</span>`;
+}
+
+function renderCard(c: Choice, slot: OfferedSlot, idx: number, canAfford: boolean): HTMLElement {
   const el = document.createElement('button');
   el.type = 'button';
-  el.className = `cc cc--tier-${c.tier}${canAfford ? '' : ' cc--unafford'}`;
+  el.className = `cc cc--tier-${c.tier} cc--slot-${slot.kind}${canAfford ? '' : ' cc--unafford'}`;
   el.innerHTML = `
     <span class="cc-shimmer" aria-hidden="true"></span>
     <span class="cc-key">${idx + 1}</span>
+    ${slotChip(slot)}
     <span class="cc-ico">${icon(c.icon, 'cc-ico-svg')}</span>
     <span class="cc-name">${c.name}</span>
     <span class="cc-cost">$${c.cost}</span>

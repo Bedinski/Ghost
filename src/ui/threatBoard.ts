@@ -2,7 +2,12 @@ import type { GameState, Threat } from '../types';
 import { THREATS } from '../game/events';
 import { CHOICES_BY_ID } from '../game/choices';
 
-export function mountThreatBoard(host: HTMLElement): (s: GameState) => void {
+export interface ThreatBoardHandle {
+  render(s: GameState): void;
+  anchor(): DOMRect | null;
+}
+
+export function mountThreatBoard(host: HTMLElement): ThreatBoardHandle {
   host.innerHTML = `
     <header class="panel-head">
       <h3>threat board</h3>
@@ -11,11 +16,12 @@ export function mountThreatBoard(host: HTMLElement): (s: GameState) => void {
     <div class="tb-list"></div>
     <div class="tb-empty">no active threats · systems nominal</div>
   `;
+  const headEl = host.querySelector<HTMLElement>('.panel-head')!;
   const list = host.querySelector<HTMLElement>('.tb-list')!;
   const empty = host.querySelector<HTMLElement>('.tb-empty')!;
   const cards = new Map<string, HTMLElement>();
 
-  return (s: GameState) => {
+  function render(s: GameState) {
     const taken = new Set(s.takenChoices);
     const offered = new Set(s.offeredChoices);
     const ids = new Set(s.threats.map((t) => t.id));
@@ -36,6 +42,11 @@ export function mountThreatBoard(host: HTMLElement): (s: GameState) => void {
       updateCard(el, t, taken, offered);
     }
     empty.style.display = s.threats.length ? 'none' : 'block';
+  }
+
+  return {
+    render,
+    anchor: () => headEl.getBoundingClientRect(),
   };
 }
 
@@ -59,6 +70,7 @@ function makeCard(t: Threat, taken: Set<string>, offered: Set<string>): HTMLElem
   el.className = `tb-card tb-card--${t.severity}${t.legit ? ' tb-card--legit' : ''}`;
   const def = THREATS[t.kind];
   el.innerHTML = `
+    <div class="tb-pressure" aria-hidden="true"></div>
     <div class="tb-head">
       <span class="tb-sev">${t.severity.toUpperCase()}</span>
       <span class="tb-name">${t.name}</span>
@@ -77,6 +89,8 @@ function updateCard(el: HTMLElement, t: Threat, taken: Set<string>, offered: Set
   const fill = el.querySelector<HTMLElement>('.tb-bar-fill')!;
   fill.style.width = `${t.progress}%`;
   el.classList.toggle('is-hot', t.progress > 70);
+  // Pressure ring visualises "time running out" — closes in as progress climbs.
+  el.style.setProperty('--pressure', String(Math.min(1, t.progress / 100)));
   // Re-render counter chips: ownership/offered status can change between
   // ticks (player just took the choice).
   const list = el.querySelector<HTMLElement>('.tb-counter-list');

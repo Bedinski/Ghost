@@ -95,6 +95,7 @@ function makeCard(sv: Server): HTMLElement {
     <div class="rc-leds">${'<i></i>'.repeat(8)}</div>
     <svg class="rc-ring" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15" class="rc-ring-bg"/><circle cx="18" cy="18" r="15" class="rc-ring-fill"/></svg>
     <span class="rc-health">100</span>
+    <div class="rc-loadbar"><div class="rc-loadbar-fill"></div><div class="rc-loadbar-mark"></div></div>
     <div class="rc-patch"></div>
   `;
   return el;
@@ -122,6 +123,17 @@ function updateCard(el: HTMLElement, sv: Server) {
   const patch = el.querySelector<HTMLElement>('.rc-patch')!;
   patch.classList.toggle('is-unpatched', !sv.patched);
   patch.title = sv.patched ? 'patched' : 'UNPATCHED — zero-day exposure';
+
+  // Load:capacity bar — colour shifts cyan→amber→red as we cross thresholds.
+  const lbFill = el.querySelector<HTMLElement>('.rc-loadbar-fill')!;
+  const ratio = sv.status === 'offline' ? 0 : Math.min(1.4, sv.load / Math.max(1, sv.capacity));
+  lbFill.style.width = Math.min(100, ratio * 100) + '%';
+  lbFill.classList.toggle('lb--ok', ratio < 0.75);
+  lbFill.classList.toggle('lb--warn', ratio >= 0.75 && ratio < 0.95);
+  lbFill.classList.toggle('lb--hot', ratio >= 0.95);
+  // Whole-card stress border — escalates as the server is choked.
+  el.classList.toggle('rc--stressed', ratio >= 0.85 && ratio < 1);
+  el.classList.toggle('rc--saturated', ratio >= 1);
 }
 
 // Re-renders the small chip strip in the panel header to reflect every

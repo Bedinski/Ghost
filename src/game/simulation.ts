@@ -4,10 +4,13 @@ import { clamp } from './state';
 import { THREATS, threatsForDay } from './events';
 
 export const TICKS_PER_DAY = 60;
-// Default 1× tick rate. Real-time per day = 60 × 220ms ≈ 13.2s. Speed
-// control divides this (2× → 110ms, 4× → 55ms). Threat TTLs are in ticks
+// Default 1× tick rate. Real-time per day = 60 × 280ms ≈ 16.8s. Speed
+// control divides this (2× → 140ms, 4× → 70ms). Threat TTLs are in ticks
 // so balance is unchanged; only real-world pacing slows.
-export const TICK_MS = 220;
+export const TICK_MS = 280;
+// Don't spawn random threats during the first MORNING_CALM_TICKS of a day —
+// gives the player real breathing room to read the screen between rounds.
+export const MORNING_CALM_TICKS = 12;
 
 function aggregateMods(mods: Modifier[]): Required<Omit<Modifier, 'id' | 'source' | 'remaining'>> {
   const base = {
@@ -112,11 +115,17 @@ export function tick(prev: GameState): GameState {
   };
   const rng = mulberry32((state.rngSeed + state.tick * 0x85ebca77) >>> 0);
 
-  // threat scheduling (pending reveals + random spawns during sim)
+  // Threat scheduling — pending reveals fire eagerly, random spawns hold
+  // off during the morning calm so the player has a beat to read the room.
   if (state.pendingThreats.length && state.tick % 10 === 0) {
     const kind = state.pendingThreats.shift();
     if (kind) spawnThreat(state, kind);
-  } else if (state.phase === 'sim' && state.tick % 14 === 0 && rng() < 0.55) {
+  } else if (
+    state.phase === 'sim' &&
+    state.tick > MORNING_CALM_TICKS &&
+    state.tick % 22 === 0 &&
+    rng() < 0.42
+  ) {
     scheduleThreat(state, rng);
   }
 

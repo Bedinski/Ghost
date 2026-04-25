@@ -1,6 +1,7 @@
 import type { GameState } from '../types';
 import { THREATS } from '../game/events';
 import { CHOICES_BY_ID } from '../game/choices';
+import { forecastNextDay } from '../game/forecast';
 
 export interface SituationReportHandle {
   open(state: GameState, holdMs: number): Promise<void>;
@@ -162,6 +163,13 @@ function renderBody(
       broke ? 'warn' : 'info',
     ),
   );
+
+  // Forecast — what's likely tomorrow. Helps the player justify PREPARE picks.
+  const forecast = forecastNextDay(state);
+  if (forecast.length > 0) {
+    const names = forecast.map((f) => THREATS[f.kind].name).join(' · ');
+    rows.push(rowLine('forecast', `tomorrow likely: ${names}`, 'info'));
+  }
 
   rowsEl.innerHTML = rows.join('');
 

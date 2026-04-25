@@ -3,7 +3,7 @@ import { mountTopStripWithAnchors, type TopStripHandle } from './topStrip';
 import { mountStatusBanner } from './statusBanner';
 import { mountServerRack, type ServerRackHandle } from './serverRack';
 import { mountNetworkMap, type NetworkMapHandle } from './networkMap';
-import { mountThreatBoard } from './threatBoard';
+import { mountThreatBoard, type ThreatBoardHandle } from './threatBoard';
 import { mountEventLog } from './eventLog';
 import { mountSparkline } from './sparkline';
 import { mountSpeedControl } from './speedControl';
@@ -20,6 +20,7 @@ export interface Monitor {
   topStrip(): TopStripHandle;
   servers(): ServerRackHandle;
   network(): NetworkMapHandle;
+  threatBoard(): ThreatBoardHandle;
   floatHost(): HTMLElement;
   momentToast(): MomentToastHandle;
   dispose(): void;
@@ -81,7 +82,7 @@ export function mountMonitor(host: HTMLElement): Monitor {
 
   const rackHandle = mountServerRack(rackPanel);
   const netHandle = mountNetworkMap(netPanel);
-  const renderThreats = mountThreatBoard(threatPanel);
+  const threatHandle = mountThreatBoard(threatPanel);
 
   const toast = mountMomentToast(toastHost);
 
@@ -116,9 +117,13 @@ export function mountMonitor(host: HTMLElement): Monitor {
       renderStatus(state);
       rackHandle.render(state);
       netHandle.render(state);
-      renderThreats(state);
+      threatHandle.render(state);
       renderLog(state);
-      sparkline.render(state.history.inbound, state.history.outbound);
+      const cap = state.servers.reduce(
+        (a, sv) => a + (sv.status === 'offline' ? 0 : sv.capacity * (sv.status === 'degraded' ? 0.55 : 1)),
+        0,
+      );
+      sparkline.render(state.history.inbound, state.history.outbound, cap);
     },
     showChoiceOverlay(el) {
       choiceHost.innerHTML = '';
@@ -137,6 +142,7 @@ export function mountMonitor(host: HTMLElement): Monitor {
     topStrip: () => topStripHandle,
     servers: () => rackHandle,
     network: () => netHandle,
+    threatBoard: () => threatHandle,
     floatHost: () => floatHost,
     momentToast: () => toast,
     dispose() {

@@ -32,6 +32,7 @@ export const CHOICES: Choice[] = [
     upside: ['+1 app server', '+5% fleet capacity'],
     downside: ['$180 + $8/day upkeep', 'More surface area if unpatched'],
     executeHint: { panel: 'servers', glyph: 'server', badge: '+1 app', tone: 'cyan' },
+    synergyWith: ['cache', 'cdn', 'patch'],
   },
   {
     id: 'inbound-monitoring',
@@ -45,6 +46,7 @@ export const CHOICES: Choice[] = [
     upside: ['Threats surface 25% faster', 'Log stream sharpens'],
     downside: ['$120 upfront', 'Adds noise to the log until tuned'],
     executeHint: { panel: 'network', target: 'edge', glyph: 'radar', badge: 'monitoring', tone: 'cyan' },
+    synergyWith: ['deploy-waf', 'siem'],
   },
   {
     id: 'harden-firewall',
@@ -58,6 +60,7 @@ export const CHOICES: Choice[] = [
     upside: ['Drops 35% of attack traffic at the edge'],
     downside: ['Blocks 8% of legit users', 'Worse during viral surges'],
     executeHint: { panel: 'network', target: 'edge', glyph: 'shield', badge: 'firewall', tone: 'cyan' },
+    synergyWith: ['rate-limit', 'inbound-monitoring'],
   },
   {
     id: 'deploy-waf',
@@ -72,6 +75,7 @@ export const CHOICES: Choice[] = [
     upside: ['Neutralises most L7 attacks (SQLi, cred-stuff)'],
     downside: ['$200 + $6/day', 'Needs monitoring to tune', 'Small latency hit'],
     executeHint: { panel: 'network', target: 'app', glyph: 'shield', badge: 'WAF', tone: 'magenta' },
+    synergyWith: ['inbound-monitoring', 'siem'],
   },
   {
     id: 'rate-limit',
@@ -84,6 +88,7 @@ export const CHOICES: Choice[] = [
     upside: ['Flattens volumetric spikes by 25%'],
     downside: ['Angers power users (reputation drag during surges)'],
     executeHint: { panel: 'network', target: 'edge', glyph: 'gauge', badge: 'rate-limit', tone: 'amber' },
+    synergyWith: ['harden-firewall', 'cdn'],
   },
   {
     id: 'patch',
@@ -96,6 +101,7 @@ export const CHOICES: Choice[] = [
     upside: ['Closes zero-day exposure', 'All servers marked patched'],
     downside: ['Brief rolling-restart: -2 reputation tick'],
     executeHint: { panel: 'servers', glyph: 'chip', badge: 'patched', tone: 'green' },
+    synergyWith: ['zero-trust', 'backup'],
   },
   {
     id: 'hire-sre',
@@ -109,6 +115,7 @@ export const CHOICES: Choice[] = [
     upside: ['Threats resolve 40% faster', 'Team morale +'],
     downside: ['$260 sign-on + $14/day salary'],
     executeHint: { panel: 'log', glyph: 'user', badge: '+1 SRE', tone: 'cyan' },
+    synergyWith: ['siem', 'incident-drill'],
   },
   {
     id: 'tech-debt',
@@ -121,6 +128,7 @@ export const CHOICES: Choice[] = [
     upside: ['-25 tech debt', 'Future choices cost less'],
     downside: ['$100 spent now for silent returns'],
     executeHint: { panel: 'topstrip', glyph: 'wrench', badge: 'debt down', tone: 'green' },
+    synergyWith: ['pentest', 'zero-trust'],
   },
   {
     id: 'cache',
@@ -134,6 +142,7 @@ export const CHOICES: Choice[] = [
     upside: ['+25% effective capacity', 'DB tier breathes easier'],
     downside: ['Hides real load from loadtests', 'Stale-data risk on events'],
     executeHint: { panel: 'servers', glyph: 'cloud', badge: 'cache', tone: 'cyan' },
+    synergyWith: ['loadtest-scale', 'cdn', 'db-replica'],
   },
   {
     id: 'siem',
@@ -148,6 +157,7 @@ export const CHOICES: Choice[] = [
     upside: ['Incidents resolve 15% faster', 'Log velocity way up'],
     downside: ['$150 + $4/day storage', 'Alert fatigue if untuned'],
     executeHint: { panel: 'log', glyph: 'scroll', badge: 'SIEM live', tone: 'magenta' },
+    synergyWith: ['inbound-monitoring', 'hire-sre', 'incident-drill'],
   },
   {
     id: 'incident-drill',
@@ -161,6 +171,7 @@ export const CHOICES: Choice[] = [
     upside: ['Team responds 15% faster', 'Morale bump'],
     downside: ['A day of lost feature work'],
     executeHint: { panel: 'log', glyph: 'flame', badge: 'drilled', tone: 'amber' },
+    synergyWith: ['siem', 'hire-sre'],
   },
   {
     id: 'pentest',
@@ -174,6 +185,7 @@ export const CHOICES: Choice[] = [
     upside: ['+18 security posture', 'Reveals hidden threats this run'],
     downside: ['$220', '+8 tech debt (a backlog of tickets)'],
     executeHint: { panel: 'topstrip', glyph: 'bug', badge: 'pentested', tone: 'magenta' },
+    synergyWith: ['tech-debt', 'patch'],
   },
   {
     id: 'backup',
@@ -187,6 +199,7 @@ export const CHOICES: Choice[] = [
     upside: ['Ransomware loses most of its teeth'],
     downside: ['$110 + $3/day', 'Only matters if you get hit'],
     executeHint: { panel: 'servers', glyph: 'archive', badge: 'backups', tone: 'cyan' },
+    synergyWith: ['patch', 'db-replica'],
   },
   {
     id: 'db-replica',
@@ -201,6 +214,7 @@ export const CHOICES: Choice[] = [
     upside: ['Read capacity up, HA on the data tier'],
     downside: ['$200 + $7/day', 'More surface area'],
     executeHint: { panel: 'servers', glyph: 'database', badge: '+1 replica', tone: 'cyan' },
+    synergyWith: ['cache', 'backup'],
   },
   {
     id: 'cdn',
@@ -215,6 +229,7 @@ export const CHOICES: Choice[] = [
     upside: ['Origin sees 20% less traffic'],
     downside: ['$160 + $5/day', 'Cache purge bugs on viral surges'],
     executeHint: { panel: 'network', target: 'edge', glyph: 'globe', badge: 'CDN', tone: 'cyan' },
+    synergyWith: ['cache', 'rate-limit'],
   },
   {
     id: 'zero-trust',
@@ -229,6 +244,7 @@ export const CHOICES: Choice[] = [
     upside: ['Huge security posture boost', 'Insider threats neutralised'],
     downside: ['$320 + $10/day', 'Week of migration pain'],
     executeHint: { panel: 'network', glyph: 'lock', badge: 'zero-trust', tone: 'magenta' },
+    synergyWith: ['siem', 'patch', 'tech-debt'],
   },
 ];
 

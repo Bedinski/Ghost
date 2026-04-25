@@ -1,8 +1,11 @@
 export interface Sparkline {
-  render(inbound: number[], outbound: number[]): void;
+  render(inbound: number[], outbound: number[], capacity?: number): void;
   dispose(): void;
 }
 
+// Throughput chart. Inbound (cyan) and outbound (magenta) sparklines with a
+// dashed capacity ceiling line; whenever inbound crosses it, the area above
+// is washed in red so distress reads visually without a label.
 export function mountSparkline(host: HTMLElement): Sparkline {
   const canvas = document.createElement('canvas');
   canvas.className = 'spark-canvas';
@@ -26,9 +29,8 @@ export function mountSparkline(host: HTMLElement): Sparkline {
   const ro = new ResizeObserver(resize);
   ro.observe(host);
 
-  function drawSeries(series: number[], color: string, fillColor: string) {
+  function drawSeries(series: number[], color: string, fillColor: string, max: number) {
     if (!series.length) return;
-    const max = Math.max(40, ...series) * 1.2;
     const n = series.length;
     const step = w / (n - 1);
     ctx.beginPath();
@@ -46,7 +48,6 @@ export function mountSparkline(host: HTMLElement): Sparkline {
     ctx.closePath();
     ctx.fillStyle = grad;
     ctx.fill();
-    // stroke the line on top
     ctx.beginPath();
     for (let i = 0; i < n; i++) {
       const x = i * step;
@@ -60,7 +61,6 @@ export function mountSparkline(host: HTMLElement): Sparkline {
     ctx.shadowColor = color;
     ctx.stroke();
     ctx.shadowBlur = 0;
-    // playhead dot
     const lastX = w;
     const lastY = h - (series[n - 1] / max) * (h - 6) - 3;
     ctx.beginPath();
@@ -83,12 +83,67 @@ export function mountSparkline(host: HTMLElement): Sparkline {
     ctx.restore();
   }
 
+  function drawCapacityCeiling(series: number[], capacity: number, max: number) {
+    const yCeiling = h - (capacity / max) * (h - 6) - 3;
+    if (yCeiling < 2) return;
+    // dashed cyan-amber threshold line
+    ctx.save();
+    ctx.setLineDash([6, 5]);
+    ctx.strokeStyle = 'rgba(255, 179, 71, 0.55)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, yCeiling);
+    ctx.lineTo(w, yCeiling);
+    ctx.stroke();
+    ctx.restore();
+
+    // Wash the area where inbound exceeded the ceiling in red.
+    const n = series.length;
+    if (n < 2) return;
+    const step = w / (n - 1);
+    ctx.save();
+    ctx.beginPath();
+    let inOver = false;
+    for (let i = 0; i < n; i++) {
+      const x = i * step;
+      const y = h - (series[i] / max) * (h - 6) - 3;
+      if (series[i] > capacity) {
+        if (!inOver) {
+          ctx.moveTo(x, yCeiling);
+          inOver = true;
+        }
+        ctx.lineTo(x, y);
+      } else if (inOver) {
+        ctx.lineTo(x, yCeiling);
+        ctx.closePath();
+        inOver = false;
+      }
+    }
+    if (inOver) {
+      ctx.lineTo(w, yCeiling);
+      ctx.closePath();
+    }
+    ctx.fillStyle = 'rgba(255, 51, 85, 0.25)';
+    ctx.fill();
+    ctx.restore();
+
+    // Tiny label "capacity" near the right end of the line.
+    ctx.save();
+    ctx.font = '9px ui-monospace, monospace';
+    ctx.fillStyle = 'rgba(255, 179, 71, 0.7)';
+    ctx.textAlign = 'right';
+    ctx.fillText('capacity', w - 4, Math.max(10, yCeiling - 3));
+    ctx.restore();
+  }
+
   return {
-    render(inbound, outbound) {
+    render(inbound, outbound, capacity) {
       ctx.clearRect(0, 0, w, h);
       drawGrid();
-      drawSeries(outbound, '#ff3df0', 'rgba(255, 61, 240, 0.22)');
-      drawSeries(inbound, '#35f3ff', 'rgba(53, 243, 255, 0.25)');
+      const peak = Math.max(40, ...inbound, ...outbound, capacity ?? 0) * 1.2;
+      drawSeries(outbound, '#ff3df0', 'rgba(255, 61, 240, 0.22)', peak);
+      drawSeries(inbound, '#35f3ff', 'rgba(53, 243, 255, 0.25)', peak);
+      if (capacity && capacity > 0) drawCapacityCeiling(inbound, capacity, peak);
     },
     dispose() {
       ro.disconnect();

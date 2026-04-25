@@ -1,7 +1,8 @@
-import type { GameState, MetaState, Server, ServerRole } from '../types';
+import type { GameState, MetaState, OfferedSlot, Server, ServerRole, ThreatKind } from '../types';
 import { mulberry32 } from './store';
 import { CHOICES, CHOICES_BY_ID } from './choices';
 import { THREATS } from './events';
+import { forecastNextDay } from './forecast';
 
 const GLYPHS = ['◇', '◆', '◉', '◈', '◎', '◐', '◑', '◒', '◓', '▣', '▤', '▥', '▦', '▨'];
 const COMPANIES = [
@@ -67,6 +68,7 @@ export function initialState(meta: MetaState): GameState {
     log: [],
     logSeq: 0,
     offeredChoices: [],
+    offeredSlots: [],
     takenChoices: [],
     pendingThreats: [],
     inbound: 40,
@@ -106,47 +108,152 @@ export function availableChoices(state: GameState): string[] {
   }).map((c) => c.id);
 }
 
-export function drawChoices(state: GameState): string[] {
+// drawChoices fills three intent-driven slots so every round offers
+// genuinely different decisions:
+//   REACT  — counter for the highest-severity active non-legit threat.
+//   PREPARE — counter for a forecast threat OR an unlocker for a future tier.
+//   BUILD  — synergises with already-shipped choices.
+// If a slot can't be filled (e.g., no active threat to react to), it
+// collapses and another BUILD/random takes its place. The 'breather'
+// safety net replaces a slot only when nothing in the offer is affordable.
+export function drawChoices(state: GameState): OfferedSlot[] {
   const rng = mulberry32((state.rngSeed ^ (state.day * 0x9e3779b1)) >>> 0);
-  const pool = availableChoices(state);
-  const slots = state.meta.perks.includes('perk-reveal') ? 4 : 3;
-  const copy = [...pool];
+  const pool = new Set(availableChoices(state));
+  const slotsTarget = state.meta.perks.includes('perk-reveal') ? 4 : 3;
+  const slots: OfferedSlot[] = [];
 
-  // When threats are active, ensure at least one offered slot is a counter
-  // for the highest-severity threat the player can still afford. This keeps
-  // the loop *agentful* — the player should never feel like the choices are
-  // unrelated to the screen.
-  const draws: string[] = [];
+  function take(id: string, slot: Omit<OfferedSlot, 'id'>): void {
+    if (slots.some((s) => s.id === id)) return;
+    slots.push({ id, ...slot });
+    pool.delete(id);
+  }
+
+  // REACT — counter for the lead active non-legit threat.
   const activeNonLegit = state.threats.filter((t) => !t.legit);
   if (activeNonLegit.length > 0) {
     const lead =
       activeNonLegit.find((t) => t.severity === 'crit') ??
       activeNonLegit.find((t) => t.severity === 'high') ??
       activeNonLegit[0];
-    const counterIds = THREATS[lead.kind].counters;
-    const affordableCounter = counterIds
-      .filter((id) => copy.includes(id))
+    const counterIds = THREATS[lead.kind].counters
+      .filter((id) => pool.has(id))
       .filter((id) => (CHOICES_BY_ID.get(id)?.cost ?? 0) <= state.budget);
-    if (affordableCounter.length > 0) {
-      const pick = affordableCounter[Math.floor(rng() * affordableCounter.length)];
-      draws.push(pick);
-      copy.splice(copy.indexOf(pick), 1);
+    if (counterIds.length > 0) {
+      const pick = counterIds[Math.floor(rng() * counterIds.length)];
+      take(pick, { kind: 'react', tag: `COUNTERS ${lead.name}`, partner: lead.name });
     }
   }
 
-  for (let i = draws.length; i < Math.min(slots, draws.length + copy.length); i++) {
-    const idx = Math.floor(rng() * copy.length);
-    draws.push(copy.splice(idx, 1)[0]);
+  // PREPARE — forecast counter, otherwise an unlocker for a future tier.
+  if (slots.length < slotsTarget) {
+    const forecast = forecastNextDay(state).map((f) => f.kind);
+    let prepared = false;
+    for (const kind of forecast) {
+      const counters = THREATS[kind].counters.filter((id) => pool.has(id));
+      const affordable = counters.filter((id) => (CHOICES_BY_ID.get(id)?.cost ?? 0) <= state.budget);
+      const list = affordable.length ? affordable : counters; // even if pricey, surface it as a hint
+      if (list.length > 0) {
+        const pick = list[Math.floor(rng() * list.length)];
+        take(pick, {
+          kind: 'prepare-counter',
+          tag: `PREPARES ${THREATS[kind].name}`,
+          partner: THREATS[kind].name,
+        });
+        prepared = true;
+        break;
+      }
+    }
+    if (!prepared) {
+      // Try an unlocker — a choice the player can take that gates an as-yet
+      // unowned advanced choice in the catalog.
+      const unlocker = pickUnlocker(state, pool, rng);
+      if (unlocker) take(unlocker.id, { kind: 'prepare-unlock', tag: `UNLOCKS ${unlocker.unlocks}`, partner: unlocker.unlocks });
+    }
   }
 
-  // Safety net: if the player can't afford any draw OR is critically broke,
-  // swap one slot for the always-free 'breather' choice.
-  const cheapest = Math.min(...draws.map((id) => CHOICES_BY_ID.get(id)?.cost ?? Infinity));
-  if (draws.length === 0 || state.budget < cheapest || state.budget < 60) {
-    if (draws.length === 0) draws.push('breather');
-    else if (!draws.includes('breather')) draws[draws.length - 1] = 'breather';
+  // BUILD — synergy-driven pick, otherwise random from pool.
+  while (slots.length < slotsTarget && pool.size > 0) {
+    const synergyPick = pickSynergy(state, pool, rng);
+    if (synergyPick) {
+      take(synergyPick.id, {
+        kind: 'build',
+        tag: synergyPick.partnerName ? `SYNERGY · pairs with ${synergyPick.partnerName}` : 'SYNERGY',
+        partner: synergyPick.partnerName ?? undefined,
+      });
+      continue;
+    }
+    // Fallback: random from pool, tagged 'random' so the panel shows no chip.
+    const remaining = [...pool];
+    const pick = remaining[Math.floor(rng() * remaining.length)];
+    take(pick, { kind: 'build', tag: undefined });
   }
-  return draws;
+
+  // Safety net: if NONE of the slots are affordable and budget is critically
+  // low, swap the last slot for the always-free 'breather'.
+  const anyAffordable = slots.some((s) => {
+    const c = CHOICES_BY_ID.get(s.id);
+    return c ? c.cost <= state.budget : false;
+  });
+  if (!anyAffordable || state.budget < 40) {
+    if (slots.length === 0) slots.push({ id: 'breather', kind: 'breather', tag: 'CATCH YOUR BREATH' });
+    else slots[slots.length - 1] = { id: 'breather', kind: 'breather', tag: 'CATCH YOUR BREATH' };
+  }
+  return slots;
+}
+
+function pickUnlocker(state: GameState, pool: Set<string>, rng: () => number):
+  | { id: string; unlocks: string }
+  | null {
+  // Find pool choices that, if taken, would satisfy a prereq.choices entry
+  // for some advanced choice the player doesn't yet own.
+  const taken = new Set(state.takenChoices);
+  const candidates: { id: string; unlocks: string }[] = [];
+  for (const adv of CHOICES) {
+    if (taken.has(adv.id)) continue;
+    const need = adv.prereqs?.choices ?? [];
+    for (const req of need) {
+      if (taken.has(req)) continue;
+      if (pool.has(req)) candidates.push({ id: req, unlocks: adv.name });
+    }
+  }
+  if (candidates.length === 0) return null;
+  return candidates[Math.floor(rng() * candidates.length)];
+}
+
+function pickSynergy(
+  state: GameState,
+  pool: Set<string>,
+  rng: () => number,
+): { id: string; partnerName: string | null } | null {
+  const taken = new Set(state.takenChoices);
+  const matches: { id: string; partnerName: string }[] = [];
+  for (const id of pool) {
+    const c = CHOICES_BY_ID.get(id);
+    if (!c?.synergyWith) continue;
+    for (const partnerId of c.synergyWith) {
+      if (taken.has(partnerId)) {
+        const partner = CHOICES_BY_ID.get(partnerId)?.name ?? partnerId;
+        matches.push({ id, partnerName: partner });
+      }
+    }
+  }
+  if (matches.length > 0) return matches[Math.floor(rng() * matches.length)];
+  return null;
+}
+
+// Legacy export kept only for the meta lookup of "what is on offer". Returns
+// just the IDs from the slots; consumers reading offeredChoices keep working.
+export function slotIds(slots: OfferedSlot[]): string[] {
+  return slots.map((s) => s.id);
+}
+
+// Look at what threats this choice's id resolves and return their threat IDs.
+export function threatsResolvedBy(state: GameState, choiceId: string): string[] {
+  const out: string[] = [];
+  for (const t of state.threats) {
+    if (THREATS[t.kind].counters.includes(choiceId)) out.push(t.id);
+  }
+  return out;
 }
 
 export function applyChoice(state: GameState, id: string): GameState {
@@ -206,6 +313,32 @@ export function applyChoice(state: GameState, id: string): GameState {
         reputationPerDay: c.ongoing.reputationPerDay,
       },
     ];
+  }
+
+  // The big fix: any active threat whose `counters` list includes the
+  // choice we just took is resolved immediately. The simulation's threat
+  // loop will see them gone next tick; we also write a green log line now
+  // so the EXECUTE phase already shows attribution.
+  const resolvedKinds: ThreatKind[] = [];
+  s.threats = s.threats.filter((t) => {
+    if (THREATS[t.kind].counters.includes(id)) {
+      resolvedKinds.push(t.kind);
+      return false;
+    }
+    return true;
+  });
+  if (resolvedKinds.length > 0) {
+    const newLog = [...s.log];
+    for (const kind of resolvedKinds) {
+      newLog.push({
+        id: ++s.logSeq,
+        day: s.day,
+        text: `✓ ${THREATS[kind].name} NEUTRALISED by ${c.name}`,
+        severity: 'ok',
+        ts: performance.now(),
+      });
+    }
+    s.log = newLog;
   }
 
   return s;
