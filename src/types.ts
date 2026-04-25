@@ -36,6 +36,11 @@ export interface Threat {
   legit: boolean;
   ttl: number;
   signature: number[];
+  // How many EOD cycles this threat has survived. 0 means freshly-spawned
+  // and the player hasn't seen it at a choice phase yet — used to enforce
+  // "no threat lands in the watch it spawned in" so the player always gets
+  // at least one chance to react.
+  daysAlive: number;
 }
 
 export interface Modifier {

@@ -78,6 +78,7 @@ export function spawnThreat(state: GameState, kind: ThreatKind): void {
     legit: def.legit,
     ttl: def.ttl,
     signature: new Array(24).fill(0).map((_, i) => Math.sin(i * 0.4) * 0.5 + 0.5),
+    daysAlive: 0,
   };
   state.threats.push(threat);
   log(
@@ -117,12 +118,14 @@ export function tick(prev: GameState): GameState {
 
   // Threat scheduling — pending reveals fire eagerly, random spawns hold
   // off during the morning calm so the player has a beat to read the room.
+  // dayTick = 1..60 within the current day's watch.
+  const dayTick = state.tick - (state.day - 1) * TICKS_PER_DAY;
   if (state.pendingThreats.length && state.tick % 10 === 0) {
     const kind = state.pendingThreats.shift();
     if (kind) spawnThreat(state, kind);
   } else if (
     state.phase === 'sim' &&
-    state.tick > MORNING_CALM_TICKS &&
+    dayTick > MORNING_CALM_TICKS &&
     state.tick % 22 === 0 &&
     rng() < 0.42
   ) {
@@ -216,7 +219,13 @@ export function tick(prev: GameState): GameState {
         0,
         100,
       );
-      return { ...t, progress, ttl: t.ttl - ttlPenalty - (countered ? 1 : 0.3) };
+      let ttl = t.ttl - ttlPenalty - (countered ? 1 : 0.3);
+      // Invariant: a non-legit threat cannot land in the same watch it
+      // spawned in. Hold its TTL just above zero until at least one EOD
+      // choice cycle has passed (daysAlive > 0) so the player always gets
+      // an explicit chance to react.
+      if (!t.legit && t.daysAlive === 0 && ttl <= 0) ttl = 1;
+      return { ...t, progress, ttl };
     })
     .filter((t) => {
       const def = THREATS[t.kind];
@@ -315,6 +324,10 @@ export function advanceDay(prev: GameState): GameState {
     log: [...prev.log],
     dropped: 0,
     allServersOfflineTicks: 0,
+    // Surviving threats have now seen an EOD cycle. Bump their daysAlive
+    // so they're allowed to land during the upcoming watch — this is the
+    // consequence of choosing not to counter them at the choice phase.
+    threats: prev.threats.map((t) => ({ ...t, daysAlive: t.daysAlive + 1 })),
   };
   log(next, `— Day ${next.day} begins —`, 'info');
   log(next, `Revenue +$${revenue} · upkeep -$${mods.upkeep}`, 'info');
